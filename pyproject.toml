@@ -1,0 +1,10 @@
+[project]
+name = "onion-monitor"
+version = "0.1.0"
+description = "Monitors a Tor .onion address and logs uptime"
+requires-python = ">=3.11"
+dependencies = [
+    "requests[socks]>=2.34.2",
+    "websocket-client[optional]>=1.9.0",
+    "pandas>=3.0.5",
+]
