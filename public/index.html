@@ -2,353 +2,266 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NIP-69 Orderbook Dashboard</title>
-    <!-- Load Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* Light mode (default) */
-        :root {
-            --bg-color: #f8fafc;
-            --text-color: #0f172a;
-            --card-bg: #ffffff;
-            --input-bg: #ffffff;
-            --input-border: #cbd5e1;
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --toggle-bg: #cbd5e1;
-        }
-
-        /* Dark mode overrides */
-        body.dark-mode {
-            --bg-color: #0f172a;
-            --text-color: #f8fafc;
-            --card-bg: #1e293b;
-            --input-bg: #334155;
-            --input-border: #475569;
-            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-            --toggle-bg: #3b82f6;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            padding: 2rem;
-            transition: background-color 0.2s ease, color 0.2s ease;
-        }
-
-        .controls {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
-        select {
-            background-color: var(--input-bg);
-            color: var(--text-color);
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--input-border);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
-
-        /* Toggle Switch Styling */
-        .theme-switch-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 1.2rem; /* Align with dropdown controls */
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: var(--toggle-bg);
-            transition: 0.3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: #ffffff;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(20px);
-        }
-
-        .chart-container {
-            background-color: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 12px;
-            max-width: 850px;
-            box-shadow: var(--card-shadow);
-            transition: background-color 0.2s ease;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoboSats Monitor</title>
+    <!-- Lightweight Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-    <h2>P2P Orderbook Analytics</h2>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <span class="status-dot"></span>
+                <h1>RoboSats Monitor <span class="badge">NIP-69</span></h1>
+            </div>
+            <button class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()">
+                <span id="themeIcon">☀️</span> <span id="themeText">Light</span>
+            </button>
+        </header>
 
-    <div class="controls">
-        <label>Group By:
-            <select id="groupBy" onchange="fetchAndDraw()">
-                <option value="payment_methods">Payment Method</option>
-                <option value="platform" selected>Platform</option>
-                <option value="currency">Currency</option>
-                <option value="type">Order Type</option>
-            </select>
-        </label>
-        
-        <label>Metric:
-            <select id="metric" onchange="fetchAndDraw()">
-                <option value="premium" selected>Premium (%)</option>
-                <option value="bond">Bond (%)</option>
-            </select>
-        </label>
+        <!-- KPI Stat Bar -->
+        <div class="stats-grid">
+            <div class="stat-card green">
+                <span class="stat-label">Orders (Last 24h)</span>
+                <span class="stat-value" id="statOrders24h">--</span>
+                <span class="stat-subtext" id="statOrders24hSub">Loading active window...</span>
+            </div>
 
-        <label>Order Type:
-            <select id="orderType" onchange="fetchAndDraw()">
-                <option value="buy">Buy</option>
-                <option value="sell" selected>Sell</option>
-            </select>
-        </label>
+            <div class="stat-card">
+                <span class="stat-label">Rolling Median Premium</span>
+                <span class="stat-value" id="statMedianPremium">--</span>
+                <span class="stat-subtext" id="statMedianSub">12-hour window</span>
+            </div>
 
-        <label>Currency:
-            <select id="currency" onchange="fetchAndDraw()">
-                <option value="AED" selected>AED</option>
-                <option value="ARS" selected>ARS</option>
-                <option value="AUD" selected>AUD</option>
-                <option value="BRL" selected>BRL</option>
-                <option value="BTC" selected>BTC</option>
-                <option value="CAD" selected>CAD</option>
-                <option value="CHF" selected>CHF</option>
-                <option value="CLP" selected>CLP</option>
-                <option value="COP" selected>COP</option>
-                <option value="CRC" selected>CRC</option>
-                <option value="CZK" selected>CZK</option>
-                <option value="DKK" selected>DKK</option>
-                <option value="DOC" selected>DOC</option>
-                <option value="EUR" selected>EUR</option>
-                <option value="GBP" selected>GBP</option>
-                <option value="HUF" selected>HUF</option>
-                <option value="ILS" selected>ILS</option>
-                <option value="INR" selected>INR</option>
-                <option value="ISK" selected>ISK</option>
-                <option value="JPY" selected>JPY</option>
-                <option value="KES" selected>KES</option>
-                <option value="KZT" selected>KZT</option>
-                <option value="MXN" selected>MXN</option>
-                <option value="MYR" selected>MYR</option>
-                <option value="NOK" selected>NOK</option>
-                <option value="NZD" selected>NZD</option>
-                <option value="PHP" selected>PHP</option>
-                <option value="PLN" selected>PLN</option>
-                <option value="PYG" selected>PYG</option>
-                <option value="RON" selected>RON</option>
-                <option value="SAR" selected>SAR</option>
-                <option value="SEK" selected>SEK</option>
-                <option value="SGD" selected>SGD</option>
-                <option value="TRY" selected>TRY</option>
-                <option value="UAH" selected>UAH</option>
-                <option value="USD" selected>USD</option>
-                <option value="USDC" selected>USDC</option>
-                <option value="USDT" selected>USDT</option>
-                <option value="UYU" selected>UYU</option>
-                <option value="ZAR" selected>ZAR</option>
-            </select>
-        </label>
+            <div class="stat-card">
+                <span class="stat-label">Rolling Mean Premium</span>
+                <span class="stat-value" id="statMeanPremium">--</span>
+                <span class="stat-subtext" id="statMeanSub">12-hour window</span>
+            </div>
 
-        <label>Aggregation:
-            <select id="aggType" onchange="fetchAndDraw()">
-                <option value="count">Count</option>
-                <option value="mean" selected>Mean</option>
-                <option value="median">Median</option>
-            </select>
-        </label>
-
-        <!-- Toggle Switch -->
-        <div class="theme-switch-container">
-            <span>☀️</span>
-            <label class="switch">
-                <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
-                <span class="slider"></span>
-            </label>
-            <span>🌙</span>
+            <div class="stat-card">
+                <span class="stat-label">Analyzed Data Points</span>
+                <span class="stat-value" id="statDataPoints">--</span>
+                <span class="stat-subtext" id="statLastUpdate">Last update: --</span>
+            </div>
         </div>
-    </div>
 
-    <div class="chart-container">
-        <canvas id="myChart"></canvas>
-    </div>
+        <!-- Controls -->
+        <div class="controls-card">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label for="currency">Currency</label>
+                    <select id="currency" onchange="onCurrencySelectChange()">
+                        <option value="EUR" selected>EUR</option>
+                        <option value="USD">USD</option>
+                        <option value="BRL">BRL</option>
+                        <option value="ARS">ARS</option>
+                        <option value="GBP">GBP</option>
+                        <option value="CAD">CAD</option>
+                        <option value="CHF">CHF</option>
+                        <option value="BTC">BTC</option>
+                        <option value="AED">AED</option>
+                        <option value="AUD">AUD</option>
+                        <option value="CLP">CLP</option>
+                        <option value="COP">COP</option>
+                        <option value="CRC">CRC</option>
+                        <option value="CZK">CZK</option>
+                        <option value="DKK">DKK</option>
+                        <option value="DOC">DOC</option>
+                        <option value="HUF">HUF</option>
+                        <option value="ILS">ILS</option>
+                        <option value="INR">INR</option>
+                        <option value="ISK">ISK</option>
+                        <option value="JPY">JPY</option>
+                        <option value="KES">KES</option>
+                        <option value="KZT">KZT</option>
+                        <option value="MXN">MXN</option>
+                        <option value="MYR">MYR</option>
+                        <option value="NOK">NOK</option>
+                        <option value="NZD">NZD</option>
+                        <option value="PHP">PHP</option>
+                        <option value="PLN">PLN</option>
+                        <option value="PYG">PYG</option>
+                        <option value="RON">RON</option>
+                        <option value="SAR">SAR</option>
+                        <option value="SEK">SEK</option>
+                        <option value="SGD">SGD</option>
+                        <option value="TRY">TRY</option>
+                        <option value="UAH">UAH</option>
+                        <option value="USDC">USDC</option>
+                        <option value="USDT">USDT</option>
+                        <option value="UYU">UYU</option>
+                        <option value="ZAR">ZAR</option>
+                    </select>
+                </div>
 
-    <script>
+                <div class="control-group">
+                    <label for="orderType">Order Type</label>
+                    <select id="orderType" onchange="fetchAndDraw()">
+                        <option value="buy">Buy (Taker Buys BTC)</option>
+                        <option value="sell" selected>Sell (Taker Sells BTC)</option>
+                    </select>
+                </div>
 
-        UPDATE THIS
-        // TODO: Replace <your-username> with the actual subdomain Cloudflare gave you
-        const fileUrl = `https://nip69-api.<your-username>.workers.dev/analyzed/rolling_premium_${groupBy}_${currency}_${orderType}.json`;
+                <div class="control-group">
+                    <label for="groupBy">Group By</label>
+                    <select id="groupBy" onchange="fetchAndDraw()">
+                        <option value="platform" selected>Platform</option>
+                        <option value="payment_methods">Payment Method</option>
+                        <option value="currency">Currency</option>
+                        <option value="order_type">Order Type</option>
+                    </select>
+                </div>
 
+                <div class="control-group">
+                    <label for="metric">Metric</label>
+                    <select id="metric" onchange="fetchAndDraw()">
+                        <option value="premium" selected>Premium (%)</option>
+                        <option value="bond">Bond (%)</option>
+                    </select>
+                </div>
 
+                <div class="control-group">
+                    <label for="aggType">Aggregation</label>
+                    <select id="aggType" onchange="fetchAndDraw()">
+                        <option value="median" selected>Median</option>
+                        <option value="mean">Mean</option>
+                        <option value="count">Count (Volume)</option>
+                    </select>
+                </div>
+            </div>
 
-        let chartInstance = null;
+            <!-- Quick Currency Pills -->
+            <div class="currency-chips">
+                <span class="chip-label">Quick:</span>
+                <button class="chip active" data-cur="EUR" onclick="quickSelectCurrency('EUR')">EUR</button>
+                <button class="chip" data-cur="USD" onclick="quickSelectCurrency('USD')">USD</button>
+                <button class="chip" data-cur="BRL" onclick="quickSelectCurrency('BRL')">BRL</button>
+                <button class="chip" data-cur="ARS" onclick="quickSelectCurrency('ARS')">ARS</button>
+                <button class="chip" data-cur="GBP" onclick="quickSelectCurrency('GBP')">GBP</button>
+                <button class="chip" data-cur="CAD" onclick="quickSelectCurrency('CAD')">CAD</button>
+                <button class="chip" data-cur="CHF" onclick="quickSelectCurrency('CHF')">CHF</button>
+                <button class="chip" data-cur="BTC" onclick="quickSelectCurrency('BTC')">BTC</button>
+                <button class="chip" data-cur="PLN" onclick="quickSelectCurrency('PLN')">PLN</button>
+            </div>
+        </div>
 
-        function toggleTheme() {
-            const isDark = document.getElementById('themeToggle').checked;
-            if (isDark) {
-                document.body.classList.add('dark-mode');
-            } else {
-                document.body.classList.remove('dark-mode');
-            }
-            fetchAndDraw();
-        }
-
-        async function fetchAndDraw() {
-            const groupBy = document.getElementById('groupBy').value;
-            const metric = document.getElementById('metric').value;
-            const currency = document.getElementById('currency').value;
-            const orderType = document.getElementById("orderType").value;
-            const aggType = document.getElementById('aggType').value; 
-            const isDark = document.body.classList.contains('dark-mode');
+        <!-- Chart Section -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <span class="chart-title" id="chartTitle">Rolling Premium Trends</span>
+            </div>
             
-            const fileUrl = `analyzed/rolling_premium_${groupBy}_${currency}_${orderType}.json`;
+            <div class="chart-wrapper">
+                <div class="overlay-msg" id="overlayMsg">
+                    <span id="overlayText">Loading dataset...</span>
+                </div>
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
 
-            try {
-                const response = await fetch(fileUrl);
-                if (!response.ok) throw new Error("Data file not found");
-                const data = await response.json();
+        <!-- Orders List Section -->
+        <div class="orders-card">
+            <div class="orders-header">
+                <div class="orders-title-group">
+                    <span class="orders-title">Orderbook Orders</span>
+                    <span class="badge" id="ordersCountBadge">--</span>
+                </div>
+                <div class="orders-search-wrapper">
+                    <input type="text" id="ordersSearchInput" placeholder="Search ID, method, platform..." oninput="onOrdersSearchChange()">
+                </div>
+            </div>
 
-                // 1. Extract unique timestamps and format them for the X-axis
-                const timestamps = [...new Set(data.map(row => row.created_at))].sort();
-                
-                const labels = timestamps.map(ts => {
-                    const date = new Date(ts);
-                    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + 
-                           ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                });
+            <div class="orders-filters-bar">
+                <div class="filter-item">
+                    <label for="orderListCurrency">Currency:</label>
+                    <select id="orderListCurrency" onchange="onOrdersFilterChange()">
+                        <option value="ALL" selected>All Currencies</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                        <option value="BRL">BRL</option>
+                        <option value="ARS">ARS</option>
+                        <option value="GBP">GBP</option>
+                        <option value="CAD">CAD</option>
+                        <option value="CHF">CHF</option>
+                        <option value="BTC">BTC</option>
+                        <option value="PLN">PLN</option>
+                        <option value="CZK">CZK</option>
+                        <option value="SEK">SEK</option>
+                        <option value="NOK">NOK</option>
+                        <option value="DKK">DKK</option>
+                        <option value="HUF">HUF</option>
+                        <option value="RON">RON</option>
+                        <option value="ISK">ISK</option>
+                        <option value="AUD">AUD</option>
+                        <option value="AED">AED</option>
+                        <option value="USDT">USDT</option>
+                        <option value="USDC">USDC</option>
+                        <option value="MXN">MXN</option>
+                    </select>
+                </div>
 
-                // 2. Group data points by category so each gets its own line
-                const groupedData = {};
-                data.forEach(row => {
-                    const category = row[groupBy] || 'Total';
-                    if (!groupedData[category]) groupedData[category] = {};
-                    groupedData[category][row.created_at] = row[aggType];
-                });
+                <div class="filter-item">
+                    <label for="orderListType">Type:</label>
+                    <select id="orderListType" onchange="onOrdersFilterChange()">
+                        <option value="ALL" selected>All Types</option>
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                </div>
 
-                // 3. Generate color palette and build Chart.js datasets
-                const palette = isDark 
-                    ? ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#f472b6']
-                    : ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777'];
+                <div class="filter-item">
+                    <label for="orderListStatus">Status:</label>
+                    <select id="orderListStatus" onchange="onOrdersFilterChange()">
+                        <option value="ALL" selected>All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="success">Success</option>
+                        <option value="expired">Expired</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                </div>
+            </div>
 
-                const datasets = Object.keys(groupedData).map((category, idx) => {
-                    const color = palette[idx % palette.length];
-                    return {
-                        label: category,
-                        data: timestamps.map(ts => groupedData[category][ts] ?? null),
-                        borderColor: color,
-                        backgroundColor: color,
-                        tension: 0.3, // Smooths out rolling line curves
-                        fill: false,
-                        spanGaps: true,
-                        pointRadius: 2
-                    };
-                });
+            <div class="orders-table-wrapper">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Fiat Amount</th>
+                            <th>Premium</th>
+                            <th>Bond</th>
+                            <th>Payment Methods</th>
+                            <th>Platform</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <tr>
+                            <td colspan="8" class="table-empty">Loading orders...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-                const ctx = document.getElementById('myChart').getContext('2d');
-                
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
+            <div class="orders-footer">
+                <span class="pagination-info" id="paginationInfo">Showing 0 of 0 orders</span>
+                <div class="pagination-buttons">
+                    <button class="page-btn" id="prevPageBtn" onclick="prevOrdersPage()" disabled>&larr; Prev</button>
+                    <button class="page-btn" id="nextPageBtn" onclick="nextOrdersPage()" disabled>Next &rarr;</button>
+                </div>
+            </div>
+        </div>
 
-                const formattedAgg = aggType.charAt(0).toUpperCase() + aggType.slice(1);
-                const formattedMetric = metric.charAt(0).toUpperCase() + metric.slice(1);
-                
-                // Dynamically set Y-axis title based on metric vs count
-                const yAxisLabel = aggType === 'count' ? 'Order Count' : `${formattedAgg} ${formattedMetric} (%)`;
+        <!-- Minimal Footer -->
+        <footer>
+            <span>Tor Socks5h Onion Poller &bull; NIP-69 Kind 38383</span>
+            <span id="footerStatus">Aggregator Status: Synchronized</span>
+        </footer>
+    </div>
 
-                const textColor = isDark ? '#cbd5e1' : '#334155';
-                const gridColor = isDark ? '#334155' : '#e2e8f0';
-
-                chartInstance = new Chart(ctx, {
-                    type: 'line', // Line chart for time-series rolling trends
-                    data: {
-                        labels: labels,
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false, // Hovering shows tooltip values for all lines at that timestamp
-                        },
-                        plugins: {
-                            legend: {
-                                labels: { color: textColor }
-                            },
-                            title: {
-                                display: true,
-                                text: `${formattedAgg} ${formattedMetric} Over Time`,
-                                color: textColor
-                            }
-                        },
-                        scales: {
-                            x: {
-                                ticks: { 
-                                    color: textColor,
-                                    maxTicksLimit: 10 // Keeps time labels clean and legible
-                                },
-                                grid: { color: gridColor }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: yAxisLabel,
-                                    color: textColor
-                                },
-                                ticks: { color: textColor },
-                                grid: { color: gridColor }
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Error loading data:", error);
-            }
-        }
-
-        // Initial render on page load
-        fetchAndDraw();
-    </script>
+    <script src="/index.js"></script>
 </body>
 </html>
