@@ -1,11 +1,11 @@
 import itertools
 import json
+import logging
 import os
+
 import boto3
 import dotenv
-import logging
 import pandas as pd
-import threading
 from botocore.config import Config
 
 dotenv.load_dotenv()
@@ -21,12 +21,12 @@ def get_s3_client():
     if not (endpoint and access_key and secret_key):
         return None
     return boto3.client(
-        service_name='s3',
+        service_name="s3",
         endpoint_url=endpoint,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name="auto",
-        config=Config(s3={'addressing_style': 'virtual'}),
+        config=Config(s3={"addressing_style": "virtual"}),
     )
 
 
@@ -37,11 +37,7 @@ def upload_df_to_s3(data: str, target_filename: str):
     s3 = get_s3_client()
     if s3 and BUCKET_NAME:
         s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=f"analyzed/{target_filename}",
-            Body=data,
-            ContentType='application/json',
-            CacheControl='max-age=300'
+            Bucket=BUCKET_NAME, Key=f"analyzed/{target_filename}", Body=data, ContentType="application/json", CacheControl="max-age=300"
         )
 
 
@@ -60,10 +56,10 @@ def parse_nostr_event(event):
     for tag in event.get("tags", []):
         if not tag:
             continue
-        
+
         key = tag[0]
         values = tag[1:]
-        
+
         # If the tag has 1 value, store as scalar; if multiple, store as list/tuple
         if len(values) == 1:
             row[key] = values[0]
@@ -75,32 +71,34 @@ def parse_nostr_event(event):
 
 def preprocess(df: pd.DataFrame):
     # Rename nostr keys to human readable according to NIP-69: https://nips.nostr.com/69
-    df = df.rename(columns={
-        # NIP-69: d < Order ID >: A unique identifier for the order.
-        "d": "order_id",
-        # NIP-69: k < Order type >: sell or buy
-        "k": "order_type",
-        # NIP-69: f < Currency >: The asset being traded, using the ISO 4217 standard
-        "f": "currency",
-        # NIP-69: s < Status >: pending, canceled, in-progress, success, expired.
-        "s": "status",
-        # amt < Amount >: The amount of Bitcoin to be traded, the amount is
-        #   defined in satoshis, if 0 means that the amount of satoshis
-        #   will be obtained from a public API after the taker accepts
-        #   the order.
-        "amt": "amount",
-        # NIP-69: fa < Fiat amount >: The fiat amount being traded, for range orders
-        #   two values are expected, the minimum and maximum amount.
-        "fa": "fiat_amount",
-        # NIP-69: pm < Payment method >: The payment method used for the trade, if the
-        #   order has multiple payment methods, they should be separated
-        #   by a comma.
-        "pm": "payment_methods",
-        # NIP-69: y < Platform >: The platform that created the order.
-        "y": "platform",
-        # NIP-69: z < Document >: order
-        "z": "document",
-    })
+    df = df.rename(
+        columns={
+            # NIP-69: d < Order ID >: A unique identifier for the order.
+            "d": "order_id",
+            # NIP-69: k < Order type >: sell or buy
+            "k": "order_type",
+            # NIP-69: f < Currency >: The asset being traded, using the ISO 4217 standard
+            "f": "currency",
+            # NIP-69: s < Status >: pending, canceled, in-progress, success, expired.
+            "s": "status",
+            # amt < Amount >: The amount of Bitcoin to be traded, the amount is
+            #   defined in satoshis, if 0 means that the amount of satoshis
+            #   will be obtained from a public API after the taker accepts
+            #   the order.
+            "amt": "amount",
+            # NIP-69: fa < Fiat amount >: The fiat amount being traded, for range orders
+            #   two values are expected, the minimum and maximum amount.
+            "fa": "fiat_amount",
+            # NIP-69: pm < Payment method >: The payment method used for the trade, if the
+            #   order has multiple payment methods, they should be separated
+            #   by a comma.
+            "pm": "payment_methods",
+            # NIP-69: y < Platform >: The platform that created the order.
+            "y": "platform",
+            # NIP-69: z < Document >: order
+            "z": "document",
+        }
+    )
 
     # Convert numeric fields to numbers
     df["premium"] = pd.to_numeric(df["premium"], errors="coerce")
@@ -128,21 +126,17 @@ def metric_average_premium(df: pd.DataFrame, currencies: list, order_types: list
     # Use explode in case the row has lists
     groups = df.explode(group_by).groupby(group_by)
     df = groups.rolling("12h")
-    df = (
-        df[metric].agg(["mean", "median", "count"])
-            .reset_index()
-            .rename(columns={'premium': 'rolling_median'})
-    )
+    df = df[metric].agg(["mean", "median", "count"]).reset_index().rename(columns={"premium": "rolling_median"})
 
     return df
 
 
 def store_metric(df, metric, group, currency, order_type):
     os.makedirs("public/analyzed", exist_ok=True)
-            
+
     filename = f"{metric}_{group}_{currency}_{order_type}.json"
     filepath = os.path.join("public/analyzed", filename)
-    
+
     # orient="records" creates a clean list of dictionaries for JS
     json_data = df.to_json(orient="records", date_format="iso")
     with open(filepath, "w") as f:
@@ -190,8 +184,8 @@ def store_orders(df: pd.DataFrame):
 def analyze(events_path: str):
     rows = []
     try:
-        with open(events_path, "r") as file:
-            for line in file.readlines():
+        with open(events_path) as file:
+            for line in file:
                 line = line.strip()
                 if not line:
                     continue

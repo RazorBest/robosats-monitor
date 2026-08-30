@@ -1,20 +1,17 @@
 import copy
-import datetime
-import itertools
 import json
 import logging
 import os
 import threading
 import time
-from typing import Optional
+from datetime import UTC, datetime
 
 import boto3
 import dotenv
-import pandas as pd
 import requests
 import websocket
 from botocore.config import Config
-from websocket import WebSocketTimeoutException
+from websocket import WebSocketException, WebSocketTimeoutException
 
 from analyze import analyze
 
@@ -30,12 +27,12 @@ def get_env_or_throw(name: str) -> str:
 
 # S3 client pointing to Cloudflare R2
 s3 = boto3.client(
-    service_name='s3',
+    service_name="s3",
     endpoint_url=get_env_or_throw("R2_ENDPOINT_URL"),
     aws_access_key_id=get_env_or_throw("R2_ACCESS_KEY_ID"),
     aws_secret_access_key=get_env_or_throw("R2_SECRET_ACCESS_KEY"),
-    region_name="auto", # Something specific to cloudflare
-    config=Config(s3={'addressing_style': 'virtual'}),
+    region_name="auto",  # Something specific to cloudflare
+    config=Config(s3={"addressing_style": "virtual"}),
 )
 BUCKET_NAME = get_env_or_throw("R2_BUCKET_NAME")
 
@@ -69,7 +66,7 @@ REQUEST_PAYLOAD = [
         "kinds": [38383],
         "since": 1787206023,
     },
-] 
+]
 
 
 def upload_df_to_s3(data, target_filename: str):
@@ -78,18 +75,18 @@ def upload_df_to_s3(data, target_filename: str):
         Bucket=BUCKET_NAME,
         Key=f"analyzed/{target_filename}",
         Body=data,
-        ContentType='application/json',
-        CacheControl='max-age=300' # Tells browsers to cache for exactly 5 minutes
+        ContentType="application/json",
+        CacheControl="max-age=300",  # Tells browsers to cache for exactly 5 minutes
     )
 
 
 def get_log_filename():
     """Generates a daily rotating filename: logs/onion_monitor_YYYY-MM-DD.csv"""
-    date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    date_str = datetime.now(tz=UTC).strftime("%Y-%m-%d")
     return os.path.join(LOG_DIR, f"onion_monitor_{date_str}.csv")
 
 
-def read_json_from_file_or_create(path: str, default_callback = dict):
+def read_json_from_file_or_create(path: str, default_callback=dict):
     with open(path, "a+") as file:
         file.seek(0)
         raw = file.read()
@@ -116,8 +113,8 @@ class Aggregator:
         self.ids_done = read_json_from_file_or_create(self.ids_done_path)
 
         try:
-            with open(self.events_path, "r") as file:
-                for line in file.readlines():
+            with open(self.events_path) as file:
+                for line in file:
                     line = line.strip()
                     if not line:
                         continue
@@ -134,8 +131,8 @@ class Aggregator:
 
     def push_data(self, data: dict):
         eid = data["id"]
-        order_id = list(filter(lambda l: l[0] == "d", data["tags"]))[0][1]
-        status = list(filter(lambda l: l[0] == "s", data["tags"]))[0][1]
+        order_id = next(filter(lambda l: l[0] == "d", data["tags"]))[1]
+        status = next(filter(lambda l: l[0] == "s", data["tags"]))[1]
 
         now = int(time.time())
 
@@ -188,7 +185,7 @@ class Aggregator:
             self.events[eid] = data
 
 
-def request_orders(url: str, since: Optional[int] = None):
+def request_orders(url: str, since: int | None = None):
     """
     Args:
         since - UTC timestamp from when to request the orders
@@ -202,13 +199,7 @@ def request_orders(url: str, since: Optional[int] = None):
 
     try:
         # Native SOCKS5h routing via Tor
-        ws = websocket.create_connection(
-            url,
-            timeout=30,
-            http_proxy_host="127.0.0.1",
-            http_proxy_port=9050,
-            proxy_type="socks5h"
-        )
+        ws = websocket.create_connection(url, timeout=30, http_proxy_host="127.0.0.1", http_proxy_port=9050, proxy_type="socks5h")
         ws.send(json.dumps(payload))
         logger.debug("WS UP - WS_CONNECTED")
 
@@ -218,7 +209,7 @@ def request_orders(url: str, since: Optional[int] = None):
 
         try:
             while ret := ws.recv_data():
-                opcode, data = ret
+                _opcode, data = ret
                 msg = json.loads(data)
 
                 if msg[0] == "EVENT":
@@ -232,11 +223,11 @@ def request_orders(url: str, since: Optional[int] = None):
         logger.debug(f"WS events: {len(events)}")
 
         ws.close()
-        logger.debug(f"WS CLOSED")
+        logger.debug("WS CLOSED")
 
         return events[::-1]
-    except Exception as e:
-        logger.debug(f"WS DOWN")
+    except WebSocketException as e:
+        logger.debug("WS DOWN")
         logger.debug(f"Exception: {e}")
 
 
@@ -249,13 +240,10 @@ def update_orders(aggregator: Aggregator, events: list):
 def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
     # Ensure log directory exists
     os.makedirs(LOG_DIR, exist_ok=True)
-    
+
     session = requests.Session()
     # Force DNS resolution through the Tor proxy
-    session.proxies = {
-        'http': 'socks5h://127.0.0.1:9050',
-        'https': 'socks5h://127.0.0.1:9050'
-    }
+    session.proxies = {"http": "socks5h://127.0.0.1:9050", "https": "socks5h://127.0.0.1:9050"}
 
     logger.info(f"Starting monitor for {ws_url} via Tor...")
 
@@ -283,7 +271,7 @@ def run_analyzer(events_path: str, stop_event: threading.Event):
         stop_event.wait(timeout=wait_seconds)
 
 
-def config_logging(extra_handlers: list[logging.Handler] = None):
+def config_logging(extra_handlers: list[logging.Handler] | None = None):
     if extra_handlers is None:
         extra_handlers = []
 
@@ -299,7 +287,6 @@ def config_logging(extra_handlers: list[logging.Handler] = None):
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     logger.info("Logging data to: %s", LOGS_PATH)
-
 
 
 def config_logging_stdout():
@@ -327,9 +314,7 @@ def main():
     threads.append(
         threading.Thread(name="Monitor", target=stopper_wrapper, args=(stop_event, run_robosats_monitor, WS_ONION_URL, stop_event))
     )
-    threads.append(
-        threading.Thread(name="Analyzer", target=stopper_wrapper, args=(stop_event, run_analyzer, EVENTS_FILE, stop_event))
-    )
+    threads.append(threading.Thread(name="Analyzer", target=stopper_wrapper, args=(stop_event, run_analyzer, EVENTS_FILE, stop_event)))
 
     for t in threads:
         t.start()
