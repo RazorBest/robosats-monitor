@@ -4,6 +4,7 @@ import itertools
 import json
 import logging
 import os
+import threading
 import time
 from typing import Optional
 
@@ -187,7 +188,7 @@ class Aggregator:
             self.events[eid] = data
 
 
-def request_orders(url: str, aggregator: Aggregator, since: Optional[int] = None):
+def request_orders(url: str, since: Optional[int] = None):
     """
     Args:
         since - UTC timestamp from when to request the orders
@@ -213,8 +214,6 @@ def request_orders(url: str, aggregator: Aggregator, since: Optional[int] = None
 
         ws.settimeout(10)
 
-        count = 0
-
         events = []
 
         try:
@@ -223,30 +222,31 @@ def request_orders(url: str, aggregator: Aggregator, since: Optional[int] = None
                 msg = json.loads(data)
 
                 if msg[0] == "EVENT":
-                    mtype, topic, data = msg
+                    _mtype, _topic, data = msg
                     events.append(data)
-
-                    count += 1
                 elif msg[0] == "EOSE":
                     break
         except WebSocketTimeoutException:
             pass
 
-        for data in events[::-1]:
-            aggregator.push_data(data)
-
-        aggregator.save_state()
-
-        logger.debug(f"WS events: {count}")
+        logger.debug(f"WS events: {len(events)}")
 
         ws.close()
         logger.debug(f"WS CLOSED")
+
+        return events[::-1]
     except Exception as e:
         logger.debug(f"WS DOWN")
         logger.debug(f"Exception: {e}")
 
 
-def monitor_onion(url: str, ws_url: str):
+def update_orders(aggregator: Aggregator, events: list):
+    for data in events:
+        aggregator.push_data(data)
+    aggregator.save_state()
+
+
+def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
     # Ensure log directory exists
     os.makedirs(LOG_DIR, exist_ok=True)
     
@@ -257,58 +257,49 @@ def monitor_onion(url: str, ws_url: str):
         'https': 'socks5h://127.0.0.1:9050'
     }
 
-    logger.info(f"Starting monitor for {url} via Tor...")
+    logger.info(f"Starting monitor for {ws_url} via Tor...")
 
     # 5 days ago
     last_book_request = int(time.time()) - 5 * 24 * 60 * 60
     aggregator = Aggregator(EVENTS_FILE, IDS_PENDING_FILE, IDS_DONE_FILE)
 
-    while True:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_file = get_log_filename()
-        
-        # Write CSV header if this is a brand new daily file
-        if not os.path.exists(log_file):
-            with open(log_file, "a") as f:
-                f.write("timestamp,status,details\n")
-
-        status = "UNKNOWN"
-        details = ""
-
-        try:
-            response = session.get(url, timeout=30)
-            details = f"HTTP_{response.status_code}"
-            
-            if response.status_code == 200:
-                status = "UP"
-            else:
-                status = "WARNING"
-                
-        except requests.exceptions.RequestException as e:
-            status = "DOWN"
-            details = type(e).__name__  # e.g., ReadTimeout, ConnectionError
-
-
-        request_orders(ws_url, aggregator, last_book_request)
-        # We don't know the API, so we add an error of 30 mins
+    while not stop_event.is_set():
+        events = request_orders(ws_url, last_book_request)
+        update_orders(aggregator, events)
+        # We don't know the API, so we add a bound of 30 mins
         last_book_request = int(time.time()) - 30 * 60
 
-        # Console output
-        logging.info(f"[{timestamp}] {status} - {details}")
+        stop_event.wait(CHECK_INTERVAL)
 
-        time.sleep(CHECK_INTERVAL)
+    logger.info("Monitor runner stopped")
 
 
-def config_logging():
+def run_analyzer(events_path: str, stop_event: threading.Event):
+    while not stop_event.is_set():
+        logger.info("Analyzer start")
+        analyze(events_path)
+        logger.info("Analyzer done")
+        wait_seconds = 60 * 5
+        stop_event.wait(timeout=wait_seconds)
+
+
+def config_logging(extra_handlers: list[logging.Handler] = None):
+    if extra_handlers is None:
+        extra_handlers = []
+
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        format="%(asctime)s [%(levelname)s] (%(threadName)s) %(name)s: %(message)s",
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler(LOGS_PATH),
+            *extra_handlers,
         ],
     )
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     logger.info("Logging data to: %s", LOGS_PATH)
+
 
 
 def config_logging_stdout():
@@ -321,6 +312,31 @@ def config_logging_stdout():
     )
 
 
+def stopper_wrapper(stop_event: threading.Event, func, *args, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    finally:
+        stop_event.set()
+
+
+def main():
+    config_logging(extra_handlers=[logging.FileHandler(LOGS_PATH)])
+
+    threads = []
+    stop_event = threading.Event()
+    threads.append(
+        threading.Thread(name="Monitor", target=stopper_wrapper, args=(stop_event, run_robosats_monitor, WS_ONION_URL, stop_event))
+    )
+    threads.append(
+        threading.Thread(name="Analyzer", target=stopper_wrapper, args=(stop_event, run_analyzer, EVENTS_FILE, stop_event))
+    )
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+
 if __name__ == "__main__":
-    config_logging()
-    monitor_onion(ONION_URL, WS_ONION_URL)
+    main()

@@ -3,10 +3,15 @@ import json
 import os
 import boto3
 import dotenv
+import logging
 import pandas as pd
+import threading
 from botocore.config import Config
 
 dotenv.load_dotenv()
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_s3_client():
@@ -29,18 +34,15 @@ BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
 
 
 def upload_df_to_s3(data: str, target_filename: str):
-    try:
-        s3 = get_s3_client()
-        if s3 and BUCKET_NAME:
-            s3.put_object(
-                Bucket=BUCKET_NAME,
-                Key=f"analyzed/{target_filename}",
-                Body=data,
-                ContentType='application/json',
-                CacheControl='max-age=300'
-            )
-    except Exception as e:
-        print(f"Error uploading {target_filename} to R2: {e}")
+    s3 = get_s3_client()
+    if s3 and BUCKET_NAME:
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=f"analyzed/{target_filename}",
+            Body=data,
+            ContentType='application/json',
+            CacheControl='max-age=300'
+        )
 
 
 def parse_nostr_event(event):
@@ -187,7 +189,6 @@ def store_orders(df: pd.DataFrame):
 
 def analyze(events_path: str):
     rows = []
-    print("Start reading")
     try:
         with open(events_path, "r") as file:
             for line in file.readlines():
@@ -197,8 +198,8 @@ def analyze(events_path: str):
                 event = json.loads(line)
                 rows.append(parse_nostr_event(event))
     except FileNotFoundError:
+        logger.debug("Events file still not present: %s", events_path)
         return
-    print("Done reading")
 
     if not rows:
         return
@@ -206,13 +207,10 @@ def analyze(events_path: str):
     df = pd.DataFrame(rows)
     df = preprocess(df)
 
-    # 1. Generate full orders list and summary metadata
-    print("Start storing")
+    # Generate full orders list and summary metadata
     store_orders(df)
-    print("Done storing")
-    exit()
 
-    # 2. Generate rolling premium metrics
+    # Generate rolling premium metrics
     group_by_variants = ["platform", "currency", "payment_methods", "order_type"]
     currencies = set(df["currency"].dropna())
     order_types = ["buy", "sell"]
@@ -223,5 +221,4 @@ def analyze(events_path: str):
 
 
 if __name__ == "__main__":
-    # analyze("data/events.log")
-    analyze("events_bishop.log")
+    analyze("data/events.log")
