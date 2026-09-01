@@ -1,4 +1,3 @@
-import itertools
 import json
 import logging
 import os
@@ -117,24 +116,25 @@ def preprocess(df: pd.DataFrame):
     return df
 
 
-def metric_average_premium(df: pd.DataFrame, currencies: list, order_types: list, group_by: list):
-    df = df[(df["currency"].isin(currencies)) & (df["order_type"].isin(order_types))]
-    df = df.set_index("first_seen").sort_index()
+def metric_average_premium(df: pd.DataFrame, group_by: str):
+    groupby_cols = list(dict.fromkeys([group_by, "platform", "currency", "order_type"]))
+
+    # Use explode in case the row has lists (e.g. payment_methods)
+    df_exploded = df.explode(group_by)
+    df_clean = df_exploded.dropna(subset=["first_seen", "premium"] + groupby_cols)
+    df_indexed = df_clean.set_index("first_seen").sort_index()
 
     metric = "premium"
+    groups = df_indexed.groupby(groupby_cols)
+    df_res = groups.rolling("12h")[metric].agg(["mean", "median", "count"]).reset_index()
 
-    # Use explode in case the row has lists
-    groups = df.explode(group_by).groupby(group_by)
-    df = groups.rolling("12h")
-    df = df[metric].agg(["mean", "median", "count"]).reset_index().rename(columns={"premium": "rolling_median"})
-
-    return df
+    return df_res
 
 
-def store_metric(df, metric, group, currency, order_type):
+def store_metric(df, metric, group):
     os.makedirs("public/analyzed", exist_ok=True)
 
-    filename = f"{metric}_{group}_{currency}_{order_type}.json"
+    filename = f"{metric}_{group}.json"
     filepath = os.path.join("public/analyzed", filename)
 
     # orient="records" creates a clean list of dictionaries for JS
@@ -200,18 +200,18 @@ def analyze(events_path: str):
 
     df = pd.DataFrame(rows)
     df = preprocess(df)
+    # TODO: remove me
+    print(f"Count: {len(df)}")
 
     # Generate full orders list and summary metadata
     store_orders(df)
 
     # Generate rolling premium metrics
     group_by_variants = ["platform", "currency", "payment_methods", "order_type"]
-    currencies = set(df["currency"].dropna())
-    order_types = ["buy", "sell"]
 
-    for group_by, currency, order_type in itertools.product(group_by_variants, currencies, order_types):
-        df_res = metric_average_premium(df, currencies=[currency], order_types=[order_type], group_by=group_by)
-        store_metric(df_res, "rolling_premium", group_by, currency, order_type)
+    for group_by in group_by_variants:
+        df_res = metric_average_premium(df, group_by=group_by)
+        store_metric(df_res, "rolling_premium", group_by)
 
 
 if __name__ == "__main__":

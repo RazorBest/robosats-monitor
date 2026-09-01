@@ -253,9 +253,10 @@ def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
 
     while not stop_event.is_set():
         events = request_orders(ws_url, last_book_request)
-        update_orders(aggregator, events)
-        # We don't know the API, so we add a bound of 30 mins
-        last_book_request = int(time.time()) - 30 * 60
+        if events is not None:
+            update_orders(aggregator, events)
+            # We don't know the API, so we add a bound of 30 mins
+            last_book_request = int(time.time()) - 30 * 60
 
         stop_event.wait(CHECK_INTERVAL)
 
