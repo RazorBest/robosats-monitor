@@ -226,12 +226,15 @@ def request_orders(url: str, since: int | None = None):
         logger.debug("WS CLOSED")
 
         return events[::-1]
-    except WebSocketException as e:
+    except Exception as e:
         logger.debug("WS DOWN")
         logger.debug(f"Exception: {e}")
+        return None
 
 
 def update_orders(aggregator: Aggregator, events: list):
+    if not events:
+        return
     for data in events:
         aggregator.push_data(data)
     aggregator.save_state()
