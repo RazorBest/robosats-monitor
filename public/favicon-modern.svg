@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="modernGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Clean Minimalist Modern Rounded Container -->
+  <rect width="32" height="32" rx="7" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  
+  <!-- Robot Face Outline -->
+  <rect x="6" y="6" width="20" height="20" rx="5" fill="none" stroke="url(#modernGrad)" stroke-width="2"/>
+  
+  <!-- Antenna Node -->
+  <circle cx="16" cy="6" r="1.75" fill="#38bdf8"/>
+  
+  <!-- Lightning Bolt Visor -->
+  <polygon points="17,9.5 11.5,17 15.5,17 14.5,22.5 20.5,15 16.5,15" fill="url(#boltGrad)"/>
+</svg>

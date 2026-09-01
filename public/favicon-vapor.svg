@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="vaporSunset" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="50%" stop-color="#9d00ff"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Floppy Casing -->
+  <path d="M 3,3 L 26,3 L 29,6 L 29,29 L 3,29 Z" fill="#0d0221" stroke="#00f0ff" stroke-width="1.5"/>
+  
+  <!-- Metal Shutter -->
+  <rect x="8" y="3" width="13" height="10" fill="#d0d5e5" stroke="#0d0221" stroke-width="0.5"/>
+  <rect x="10" y="5" width="3" height="7" fill="#0d0221"/>
+  
+  <!-- Sunset Hologram Sticker -->
+  <rect x="6" y="15" width="20" height="11" fill="url(#vaporSunset)"/>
+  <circle cx="16" cy="18" r="2.5" fill="#ffee00"/>
+  <line x1="6" y1="21" x2="26" y2="21" stroke="#ffffff" stroke-width="0.5"/>
+  <line x1="6" y1="23.5" x2="26" y2="23.5" stroke="#ffffff" stroke-width="0.5"/>
+</svg>
