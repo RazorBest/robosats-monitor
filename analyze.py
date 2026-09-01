@@ -110,6 +110,9 @@ def preprocess(df: pd.DataFrame):
     if "last_seen" in df.columns:
         df["last_seen"] = pd.to_datetime(df["last_seen"], unit="s", errors="coerce")
 
+    if "order_id" in df.columns:
+        df["order_id"] = df["order_id"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else (str(x) if isinstance(x, list) else x))
+
     df = df.sort_values(by="last_seen")
     df = df.drop_duplicates(subset=["order_id"], keep="last").copy()
 
@@ -120,7 +123,15 @@ def metric_average_premium(df: pd.DataFrame, group_by: str):
     groupby_cols = list(dict.fromkeys([group_by, "platform", "currency", "order_type"]))
 
     # Use explode in case the row has lists (e.g. payment_methods)
-    df_exploded = df.explode(group_by)
+    df_exploded = df.explode(group_by).copy()
+
+    # Ensure all groupby columns contain hashable scalars before grouping
+    for col in groupby_cols:
+        if col in df_exploded.columns:
+            df_exploded[col] = df_exploded[col].apply(
+                lambda x: ", ".join(str(i) for i in x) if isinstance(x, list) else x
+            )
+
     df_clean = df_exploded.dropna(subset=["first_seen", "premium"] + groupby_cols)
     df_indexed = df_clean.set_index("first_seen").sort_index()
 
