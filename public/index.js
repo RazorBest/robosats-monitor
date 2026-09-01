@@ -335,23 +335,48 @@ function formatPercent(value) {
     return `${sign}${value.toFixed(2)}%`;
 }
 
+function parseUtcDate(isoString) {
+    if (!isoString) return null;
+    let s = String(isoString).trim();
+    if (!s) return null;
+    if (!s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) {
+        s += 'Z';
+    }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 function formatDateTime(isoString) {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '--';
+    const date = parseUtcDate(isoString);
+    if (!date) return '--';
     const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return `${dateStr} ${timeStr}`;
+}
+
+function formatFullDateTime(isoString) {
+    const date = parseUtcDate(isoString);
+    if (!date) return '--';
+    return date.toLocaleString([], {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    });
 }
 
 function getOrderLastSeen(order) {
     if (!order || order.last_seen == null) {
         throw new Error(`Missing required 'last_seen' field on order ${order ? order.order_id : 'unknown'}`);
     }
-    const t = new Date(order.last_seen).getTime();
-    if (isNaN(t)) {
+    const d = parseUtcDate(order.last_seen);
+    if (!d) {
         throw new Error(`Invalid 'last_seen' timestamp on order ${order.order_id}: ${order.last_seen}`);
     }
-    return t;
+    return d.getTime();
 }
 
 function computeGlobal24hOrders(cutoff24h) {
@@ -464,9 +489,9 @@ function updateKPIs(data) {
 
     // Extract latest timestamp from rolling metric series
     const timestamps = data
-        .map(r => (r && r.first_seen ? new Date(r.first_seen).getTime() : null))
+        .map(r => (r && r.first_seen ? (parseUtcDate(r.first_seen)?.getTime() ?? null) : null))
         .filter(t => t != null && !isNaN(t));
-    let lastUpdateStr = timestamps.length > 0 ? formatDateTime(Math.max(...timestamps)) : '--';
+    let lastUpdateStr = timestamps.length > 0 ? formatDateTime(new Date(Math.max(...timestamps)).toISOString()) : '--';
 
     const curLabel = (groupBy === 'currency') ? 'All Currencies' : (currency === 'ALL' ? 'All Currencies' : currency);
     const typeLabel = (groupBy === 'order_type') ? 'All Types' : (orderType === 'ALL' ? 'All Types' : orderType.toUpperCase());
@@ -570,7 +595,7 @@ function renderChart() {
 
         if (rangeMs > 0) {
             const cutoff = now - rangeMs;
-            chartRows = chartRows.filter(r => new Date(r.first_seen).getTime() >= cutoff);
+            chartRows = chartRows.filter(r => (parseUtcDate(r.first_seen)?.getTime() ?? 0) >= cutoff);
         }
     }
 
@@ -963,8 +988,8 @@ function filterAndRenderOrders() {
         }
 
         if (sortColumn === 'first_seen' || sortColumn === 'last_seen') {
-            const valA = a[sortColumn] ? new Date(a[sortColumn]).getTime() : 0;
-            const valB = b[sortColumn] ? new Date(b[sortColumn]).getTime() : 0;
+            const valA = a[sortColumn] ? (parseUtcDate(a[sortColumn])?.getTime() ?? 0) : 0;
+            const valB = b[sortColumn] ? (parseUtcDate(b[sortColumn])?.getTime() ?? 0) : 0;
             return sortDirection === 'asc' ? valA - valB : valB - valA;
         }
 
@@ -1035,6 +1060,7 @@ function renderOrdersTable() {
 
         const fiatDisplay = formatFiatDisplay(order.fiat_amount, order.currency);
         const timeDisplay = formatDateTime(order.first_seen);
+        const fullTimeTitle = escapeHtml(formatFullDateTime(order.first_seen));
         const methodsHtml = formatPaymentMethodsHtml(order.payment_methods);
 
         return `
@@ -1047,7 +1073,7 @@ function renderOrdersTable() {
                 <td>${methodsHtml}</td>
                 <td><span class="platform-tag">${escapeHtml(order.platform || '--')}</span></td>
                 <td><span class="${statusClass}">${statusLabel}</span></td>
-                <td class="text-muted font-mono text-sm">${timeDisplay}</td>
+                <td class="text-muted font-mono text-sm" title="${fullTimeTitle}">${timeDisplay}</td>
             </tr>
         `;
     }).join('');
