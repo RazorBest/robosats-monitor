@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>:: ROBOSATS MONITOR 2005 // V A P O R W A V E ::</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon-vapor.svg">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/index-vaporwave.css">
+</head>
+<body>
+    <!-- CRT Scanline & Glitch Overlay -->
+    <div class="crt-overlay"></div>
+
+    <div class="main-wrapper">
+        <!-- 2005 Marquee Ticker -->
+        <div class="marquee-box">
+            <div class="marquee-tag">[BROADCAST]</div>
+            <marquee class="marquee-text" scrollamount="6" behavior="scroll" direction="left">
+                *** WELCOME TO ROBOSATS MONITOR 2005 (VAPOR EDITION) *** LIVE NOSTR NIP-69 BITCOIN P2P ORDERBOOK *** ESCROW BONDS ACTIVE *** BEST VIEWED IN INTERNET EXPLORER 6.0 AT 1024x768 *** NO KYC // NO LOGS // PURE CYBERSPACE SATS ***
+            </marquee>
+            <button class="crt-tag-btn" id="crtToggleBtn">[CRT: ON]</button>
+        </div>
+
+        <!-- Master Title Window -->
+        <header class="win-window header-window">
+            <div class="win-titlebar">
+                <div class="win-title">
+                    <span class="win-tag">[SYS]</span>
+                    <span>C:\ROBOSATS\MONITOR_2005.EXE - [NIP-69 REALTIME NODE]</span>
+                </div>
+                <div class="win-controls">
+                    <button class="win-btn win-btn-min">_</button>
+                    <button class="win-btn win-btn-max">□</button>
+                    <button class="win-btn win-btn-close win-close">×</button>
+                </div>
+            </div>
+            <div class="win-body header-inner">
+                <div class="wordart-banner">
+                    <h1 class="glitch-title" data-text="ＲＯＢＯＳＡＴＳ ２００５">ＲＯＢＯＳＡＴＳ ２００５</h1>
+                    <div class="sub-wordart">
+                        <span class="tag-japanese">ロボサッツ・モニター</span>
+                        <span class="tag-sub">:: CYBERSPACE P2P BITCOIN LIQUIDITY TERMINAL ::</span>
+                        <span class="tag-version">v2.005-SP2 [BETA]</span>
+                    </div>
+                </div>
+
+                <div class="header-action-panel">
+                    <div class="sys-info-box">
+                        <span class="sys-item"><span class="status-pulse"></span> SYSTEM: <strong>ONLINE</strong></span>
+                        <span class="sys-item" id="syncStatus">Synced: --</span>
+                    </div>
+                    <div class="button-strip">
+                        <button class="retro-btn guide-btn" id="guideToggleBtn" onclick="toggleGuide()">
+                            <span class="btn-tag">[?]</span> <span id="guideBtnText">Help & FAQ ▾</span>
+                        </button>
+                        <button class="retro-btn" id="refreshBtn" onclick="manualRefresh()">
+                            <span class="btn-tag" id="refreshIcon">[R]</span> <span>REFRESH</span>
+                        </button>
+                        <label class="retro-checkbox-label">
+                            <input type="checkbox" id="autoRefreshToggle" onchange="toggleAutoRefresh(this.checked)">
+                            <span>Auto (60s)</span>
+                        </label>
+                        <button class="retro-btn" id="themeToggleBtn" onclick="toggleTheme()">
+                            <span id="themeText">DAY / NIGHT</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Collapsible System Manual (Guide Drawer) -->
+        <div class="win-window guide-window" id="guideDrawer">
+            <div class="win-titlebar sub-titlebar">
+                <div class="win-title">
+                    <span class="win-tag">[DOC]</span>
+                    <span>README.TXT - ROBOSATS ARCHITECTURE & PROTOCOL FAQ</span>
+                </div>
+                <div class="win-controls">
+                    <button class="win-btn" onclick="toggleGuide()">×</button>
+                </div>
+            </div>
+            <div class="win-body">
+                <div class="guide-grid-retro">
+                    <div class="retro-note-card">
+                        <div class="note-header">[01] WHY ROBOSATS?</div>
+                        <p>Centralized exchanges steal your privacy with mandatory KYC and passport scans. RoboSats operates over Tor & Lightning with disposable robot avatars and escrow deposits: 100% peer-to-peer, 0% KYC.</p>
+                    </div>
+                    <div class="retro-note-card">
+                        <div class="note-header">[02] WHY THIS MONITOR?</div>
+                        <p>P2P orderbooks live across decentralized Nostr (NIP-69) relays. This terminal aggregates global order flow and computes 12-hour rolling premium curves so you never overpay for non-KYC bitcoin.</p>
+                    </div>
+                    <div class="retro-note-card">
+                        <div class="note-header">[03] WHAT IS A PREMIUM?</div>
+                        <p>The price difference over spot market index. <strong>+3.00%</strong> = 3% markup for privacy. <strong>-1.50%</strong> = 1.5% discount below global market spot.</p>
+                    </div>
+                    <div class="retro-note-card">
+                        <div class="note-header">[04] ESCROW BONDS & SAFETY</div>
+                        <p>Both trading peers lock a small refundable Lightning fidelity bond in multisig escrow. Upon fiat payment confirmation, bitcoin & bonds are released instantaneously.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2005 Layout: Left Sidebar + Main Content -->
+        <div class="layout-columns">
+            <!-- Left Sidebar -->
+            <aside class="sidebar-col">
+                <!-- Retro Winamp / Audio Widget -->
+                <div class="win-window widget-win" id="winampWidget">
+                    <div class="win-titlebar widget-titlebar">
+                        <span class="win-title">[AUDIO] VAPOR_AUDIO.WAV</span>
+                    </div>
+                    <div class="win-body widget-body winamp-box" id="winampBox">
+                        <div class="winamp-display" id="winampDisplay" style="cursor: pointer;">
+                            <span class="winamp-timer" id="winampTimer">00:00</span>
+                            <div class="winamp-title-wrapper" id="winampTitleWrapper">
+                                <span class="winamp-title-text" id="winampTitle">CLICK &gt; TO PLAY</span>
+                            </div>
+                        </div>
+                        <div class="winamp-eq" id="winampEq">
+                            <span class="eq-bar" style="height: 60%"></span>
+                            <span class="eq-bar" style="height: 85%"></span>
+                            <span class="eq-bar" style="height: 40%"></span>
+                            <span class="eq-bar" style="height: 95%"></span>
+                            <span class="eq-bar" style="height: 70%"></span>
+                            <span class="eq-bar" style="height: 50%"></span>
+                            <span class="eq-bar" style="height: 80%"></span>
+                            <span class="eq-bar" style="height: 30%"></span>
+                        </div>
+                        <div class="winamp-controls">
+                            <button class="winamp-btn" id="winampPrevBtn">|&lt;</button>
+                            <button class="winamp-btn" id="winampPlayBtn">&gt;</button>
+                            <button class="winamp-btn" id="winampPauseBtn">||</button>
+                            <button class="winamp-btn" id="winampStopBtn">[]</button>
+                            <button class="winamp-btn" id="winampNextBtn">&gt;|</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Webring & Cyberspace Links -->
+                <div class="win-window widget-win">
+                    <div class="win-titlebar widget-titlebar">
+                        <span class="win-title">[WWW] WEBRING_NAV.DLL</span>
+                    </div>
+                    <div class="win-body widget-body">
+                        <ul class="retro-link-list">
+                            <li><a href="#orderbook-anchor">&gt;&gt; Live Orderbook</a></li>
+                            <li><a href="#chart-anchor">&gt;&gt; Premium Charts</a></li>
+                            <li><a href="#kpi-anchor">&gt;&gt; Market Metrics</a></li>
+                            <li><a href="https://robosats.com" target="_blank" rel="noreferrer">&gt;&gt; Official RoboSats [link]</a></li>
+                            <li><a href="https://github.com/nostr-protocol/nips/blob/master/69.md" target="_blank" rel="noreferrer">&gt;&gt; NIP-69 Specs [link]</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Hit Counter Box -->
+                <div class="win-window widget-win" id="statsCounterWidget">
+                    <div class="win-titlebar widget-titlebar">
+                        <span class="win-title">[CTR] STATS_COUNTER.EXE</span>
+                        <div class="win-controls">
+                            <button class="win-btn win-btn-min">_</button>
+                            <button class="win-btn win-btn-close win-close">×</button>
+                        </div>
+                    </div>
+                    <div class="win-body widget-body center-text">
+                        <div class="counter-label">VISITORS SINCE 2005:</div>
+                        <div class="odometer-box" id="odometerContainer">
+                            <span class="odo-digit">0</span>
+                            <span class="odo-digit">0</span>
+                            <span class="odo-digit">4</span>
+                            <span class="odo-digit">8</span>
+                            <span class="odo-digit">2</span>
+                            <span class="odo-digit">9</span>
+                            <span class="odo-digit">1</span>
+                        </div>
+                        <div class="counter-sub">SERVER LOAD: 12.4% // TOR OK</div>
+                    </div>
+                </div>
+
+                <!-- 88x31 Retro Badges Wall -->
+                <div class="badges-wall">
+                    <div class="retro-badge-88x31 badge-ie">IE 6.0 READY</div>
+                    <div class="retro-badge-88x31 badge-notepad">MADE W/ NOTEPAD</div>
+                    <div class="retro-badge-88x31 badge-tor">TOR ONION ROUTED</div>
+                    <div class="retro-badge-88x31 badge-nostr">POWERED BY NOSTR</div>
+                    <div class="retro-badge-88x31 badge-btc">BITCOIN ACCEPTED</div>
+                </div>
+            </aside>
+
+            <!-- Main Content Section -->
+            <main class="content-col">
+                <!-- KPI Stat Bar Window -->
+                <div class="win-window" id="kpi-anchor">
+                    <div class="win-titlebar">
+                        <div class="win-title">
+                            <span class="win-tag">[KPI]</span>
+                            <span>MARKET_SUMMARY_KPI.DAT - [24H ROLLING TELEMETRY]</span>
+                        </div>
+                    </div>
+                    <div class="win-body">
+                        <div class="stats-grid-retro">
+                            <div class="stat-card-retro card-neon-cyan">
+                                <div class="stat-top">
+                                    <span class="stat-label">ORDERS (24H)</span>
+                                    <span class="info-tip" data-tip="Unique active orders seen on orderbook in last 24h.">?</span>
+                                </div>
+                                <div class="stat-value-retro" id="statOrders24h">--</div>
+                                <div class="stat-subtext-retro" id="statOrders24hSub">Loading active window...</div>
+                            </div>
+
+                            <div class="stat-card-retro card-neon-pink">
+                                <div class="stat-top">
+                                    <span class="stat-label">VOLUME (24H)</span>
+                                    <span class="info-tip" data-tip="Total sats & fiat volume in 24h window.">?</span>
+                                </div>
+                                <div class="stat-value-retro" id="statVolume24h">--</div>
+                                <div class="stat-subtext-retro" id="statVolume24hSub">24h active window</div>
+                            </div>
+
+                            <div class="stat-card-retro card-neon-purple">
+                                <div class="stat-top">
+                                    <span class="stat-label">BUY/SELL SPREAD</span>
+                                    <span class="info-tip" data-tip="Gap between median Buy & Sell premiums.">?</span>
+                                </div>
+                                <div class="stat-value-retro" id="statSpread">--</div>
+                                <div class="stat-subtext-retro" id="statSpreadSub">Buy vs Sell premium</div>
+                            </div>
+
+                            <div class="stat-card-retro card-neon-yellow">
+                                <div class="stat-top">
+                                    <span class="stat-label">MEDIAN PREMIUM</span>
+                                    <span class="info-tip" data-tip="12h median price deviation from spot price.">?</span>
+                                </div>
+                                <div class="stat-value-retro" id="statMedianPremium">--</div>
+                                <div class="stat-subtext-retro" id="statMedianSub">12-hour window</div>
+                            </div>
+
+                            <div class="stat-card-retro card-neon-green">
+                                <div class="stat-top">
+                                    <span class="stat-label">DATA POINTS</span>
+                                    <span class="info-tip" data-tip="Total historical rolling calculation entries.">?</span>
+                                </div>
+                                <div class="stat-value-retro" id="statDataPoints">--</div>
+                                <div class="stat-subtext-retro" id="statLastUpdate">Last update: --</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Query Filters & Analytics Control Window -->
+                <div class="win-window">
+                    <div class="win-titlebar">
+                        <div class="win-title">
+                            <span class="win-tag">[CFG]</span>
+                            <span>FILTER_CONFIG.SYS - [ORDERBOOK PARAMETERS]</span>
+                        </div>
+                    </div>
+                    <div class="win-body">
+                        <!-- Primary Filters Row -->
+                        <div class="filter-fieldset">
+                            <legend class="retro-legend">:: MARKET SELECTION</legend>
+                            <div class="controls-row-retro">
+                                <div class="control-box">
+                                    <label for="currency" id="currencyLabel">CURRENCY:</label>
+                                    <select id="currency" class="retro-select" onchange="onCurrencySelectChange()">
+                                        <option value="ALL" selected>All Currencies</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="USD">USD</option>
+                                        <option value="BRL">BRL</option>
+                                        <option value="ARS">ARS</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="CAD">CAD</option>
+                                        <option value="CHF">CHF</option>
+                                        <option value="BTC">BTC</option>
+                                        <option value="AED">AED</option>
+                                        <option value="AUD">AUD</option>
+                                        <option value="CLP">CLP</option>
+                                        <option value="COP">COP</option>
+                                        <option value="CRC">CRC</option>
+                                        <option value="CZK">CZK</option>
+                                        <option value="DKK">DKK</option>
+                                        <option value="DOC">DOC</option>
+                                        <option value="HUF">HUF</option>
+                                        <option value="ILS">ILS</option>
+                                        <option value="INR">INR</option>
+                                        <option value="ISK">ISK</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="KES">KES</option>
+                                        <option value="KZT">KZT</option>
+                                        <option value="MXN">MXN</option>
+                                        <option value="MYR">MYR</option>
+                                        <option value="NOK">NOK</option>
+                                        <option value="NZD">NZD</option>
+                                        <option value="PHP">PHP</option>
+                                        <option value="PLN">PLN</option>
+                                        <option value="PYG">PYG</option>
+                                        <option value="RON">RON</option>
+                                        <option value="SAR">SAR</option>
+                                        <option value="SEK">SEK</option>
+                                        <option value="SGD">SGD</option>
+                                        <option value="TRY">TRY</option>
+                                        <option value="UAH">UAH</option>
+                                        <option value="USDC">USDC</option>
+                                        <option value="USDT">USDT</option>
+                                        <option value="UYU">UYU</option>
+                                        <option value="ZAR">ZAR</option>
+                                    </select>
+                                </div>
+
+                                <div class="control-box">
+                                    <label for="platform" id="platformLabel">PLATFORM:</label>
+                                    <select id="platform" class="retro-select" onchange="onPlatformSelectChange()">
+                                        <option value="ALL" selected>All Platforms</option>
+                                        <option value="robosats">RoboSats</option>
+                                        <option value="peach">Peach</option>
+                                        <option value="templeofsats">TempleOfSats</option>
+                                        <option value="thebiglake">The Big Lake</option>
+                                        <option value="alice">Alice</option>
+                                    </select>
+                                </div>
+
+                                <div class="control-box">
+                                    <label for="orderType" id="orderTypeLabel">ORDER TYPE:</label>
+                                    <select id="orderType" class="retro-select" onchange="onOrderTypeChange()">
+                                        <option value="ALL" selected>All (Buy & Sell)</option>
+                                        <option value="buy">Buy (Taker Buys BTC)</option>
+                                        <option value="sell">Sell (Taker Sells BTC)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Helper Hint -->
+                            <div class="filter-hint-retro" id="filterHint">
+                                <span class="hint-tag">[INFO]</span>
+                                <span><strong>Taker Sells BTC:</strong> You send Bitcoin via Lightning to receive fiat via payment transfer.</span>
+                            </div>
+
+                            <!-- Quick Currency Chips -->
+                            <div class="currency-chips-retro" id="currencyChips">
+                                <span class="chips-label">SPEED DIAL:</span>
+                                <button class="chip-retro" data-cur="ALL" onclick="quickSelectCurrency('ALL')">[ALL]</button>
+                                <button class="chip-retro active" data-cur="EUR" onclick="quickSelectCurrency('EUR')">[EUR]</button>
+                                <button class="chip-retro" data-cur="USD" onclick="quickSelectCurrency('USD')">[USD]</button>
+                                <button class="chip-retro" data-cur="BRL" onclick="quickSelectCurrency('BRL')">[BRL]</button>
+                                <button class="chip-retro" data-cur="ARS" onclick="quickSelectCurrency('ARS')">[ARS]</button>
+                                <button class="chip-retro" data-cur="GBP" onclick="quickSelectCurrency('GBP')">[GBP]</button>
+                                <button class="chip-retro" data-cur="CAD" onclick="quickSelectCurrency('CAD')">[CAD]</button>
+                                <button class="chip-retro" data-cur="CHF" onclick="quickSelectCurrency('CHF')">[CHF]</button>
+                                <button class="chip-retro" data-cur="BTC" onclick="quickSelectCurrency('BTC')">[BTC]</button>
+                                <button class="chip-retro" data-cur="PLN" onclick="quickSelectCurrency('PLN')">[PLN]</button>
+                            </div>
+                        </div>
+
+                        <!-- Analytics Dimension Row -->
+                        <div class="filter-fieldset">
+                            <legend class="retro-legend">:: AGGREGATION & ROLLING METRIC</legend>
+                            <div class="controls-row-retro">
+                                <div class="control-box">
+                                    <label for="groupBy">GROUP BY:</label>
+                                    <select id="groupBy" class="retro-select" onchange="onGroupByChange()">
+                                        <option value="platform" selected>Platform</option>
+                                        <option value="payment_methods">Payment Method</option>
+                                        <option value="currency">Currency</option>
+                                        <option value="order_type">Order Type</option>
+                                    </select>
+                                </div>
+
+                                <div class="control-box">
+                                    <label for="metric">METRIC:</label>
+                                    <select id="metric" class="retro-select" onchange="onAnalyticsOptionChange()">
+                                        <option value="premium" selected>Premium (%)</option>
+                                        <option value="bond">Bond (%)</option>
+                                    </select>
+                                </div>
+
+                                <div class="control-box">
+                                    <label for="aggType">STAT METHOD:</label>
+                                    <select id="aggType" class="retro-select" onchange="onAnalyticsOptionChange()">
+                                        <option value="median" selected>Median</option>
+                                        <option value="mean">Mean (Avg)</option>
+                                        <option value="count">Count (Volume)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Chart Window -->
+                <div class="win-window" id="chart-anchor">
+                    <div class="win-titlebar">
+                        <div class="win-title">
+                            <span class="win-tag">[PLT]</span>
+                            <span id="chartTitle">CHART_RENDERER.OCX - [12H ROLLING PREMIUM CURVES]</span>
+                        </div>
+                        <div class="chart-range-picker-retro" id="chartRangePicker">
+                            <button class="range-btn-retro" data-range="24h" onclick="selectTimeRange('24h')">[24H]</button>
+                            <button class="range-btn-retro" data-range="7d" onclick="selectTimeRange('7d')">[7D]</button>
+                            <button class="range-btn-retro" data-range="30d" onclick="selectTimeRange('30d')">[30D]</button>
+                            <button class="range-btn-retro active" data-range="ALL" onclick="selectTimeRange('ALL')">[ALL]</button>
+                        </div>
+                    </div>
+                    <div class="win-body chart-body-retro">
+                        <div class="chart-wrapper-retro">
+                            <div class="overlay-msg-retro" id="overlayMsg">
+                                <span id="overlayText">INITIALIZING GRAPH ENGINE...</span>
+                            </div>
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orderbook Table Window -->
+                <div class="win-window" id="orderbook-anchor">
+                    <div class="win-titlebar">
+                        <div class="win-title">
+                            <span class="win-tag">[DAT]</span>
+                            <span>ORDERBOOK_GRID.DAT - [LIVE NIP-69 TRANSACTIONS]</span>
+                            <span class="badge-retro" id="ordersCountBadge">--</span>
+                        </div>
+                    </div>
+                    <div class="win-body">
+                        <!-- Table Filter Toolbar -->
+                        <div class="orders-toolbar-retro">
+                            <div class="search-box-retro">
+                                <label for="ordersSearchInput">SEARCH:</label>
+                                <input type="text" id="ordersSearchInput" class="retro-input" placeholder="Search ID, method, rail..." oninput="onOrdersSearchChange()">
+                            </div>
+
+                            <div class="table-quick-filters">
+                                <div class="tb-item">
+                                    <label for="orderListCurrency">CURRENCY:</label>
+                                    <select id="orderListCurrency" class="retro-select-sm" onchange="onOrdersFilterChange()">
+                                        <option value="ALL" selected>All</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="USD">USD</option>
+                                        <option value="BRL">BRL</option>
+                                        <option value="ARS">ARS</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="CAD">CAD</option>
+                                        <option value="CHF">CHF</option>
+                                        <option value="BTC">BTC</option>
+                                        <option value="PLN">PLN</option>
+                                    </select>
+                                </div>
+
+                                <div class="tb-item">
+                                    <label for="orderListType">TYPE:</label>
+                                    <select id="orderListType" class="retro-select-sm" onchange="onOrdersFilterChange()">
+                                        <option value="ALL" selected>All</option>
+                                        <option value="buy">BUY</option>
+                                        <option value="sell">SELL</option>
+                                    </select>
+                                </div>
+
+                                <div class="tb-item">
+                                    <label for="orderListStatus">STATUS:</label>
+                                    <select id="orderListStatus" class="retro-select-sm" onchange="onOrdersFilterChange()">
+                                        <option value="ALL" selected>All</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="success">Success</option>
+                                        <option value="expired">Expired</option>
+                                        <option value="canceled">Canceled</option>
+                                    </select>
+                                </div>
+
+                                <button class="retro-btn-sm" id="pendingToggleBtn" onclick="togglePendingOnly()">
+                                    [!] PENDING ONLY
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Table Wrapper -->
+                        <div class="orders-table-wrapper-retro">
+                            <table class="orders-table-retro" border="1" cellpadding="6" cellspacing="0">
+                                <thead>
+                                    <tr>
+                                        <th onclick="sortOrders('order_id')" class="sortable" data-col="order_id">ORDER ID <span class="sort-icon" id="sort-order_id">↕</span></th>
+                                        <th onclick="sortOrders('order_type')" class="sortable" data-col="order_type">TYPE <span class="sort-icon" id="sort-order_type">↕</span></th>
+                                        <th onclick="sortOrders('fiat_amount')" class="sortable" data-col="fiat_amount">FIAT AMOUNT <span class="sort-icon" id="sort-fiat_amount">↕</span></th>
+                                        <th onclick="sortOrders('premium')" class="sortable" data-col="premium">PREMIUM (%) <span class="sort-icon" id="sort-premium">↕</span></th>
+                                        <th onclick="sortOrders('bond')" class="sortable" data-col="bond">BOND (%) <span class="sort-icon" id="sort-bond">↕</span></th>
+                                        <th onclick="sortOrders('payment_methods')" class="sortable" data-col="payment_methods">PAYMENT METHOD <span class="sort-icon" id="sort-payment_methods">↕</span></th>
+                                        <th onclick="sortOrders('platform')" class="sortable" data-col="platform">PLATFORM <span class="sort-icon" id="sort-platform">↕</span></th>
+                                        <th onclick="sortOrders('status')" class="sortable" data-col="status">STATUS <span class="sort-icon" id="sort-status">↕</span></th>
+                                        <th onclick="sortOrders('first_seen')" class="sortable sorted" data-col="first_seen">SEEN TIME <span class="sort-icon" id="sort-first_seen">▼</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTableBody">
+                                    <tr>
+                                        <td colspan="9" class="table-empty-retro">LOADING ORDERS DATABASE...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination Footer -->
+                        <div class="orders-footer-retro">
+                            <span class="pagination-info-retro" id="paginationInfo">Showing 0 of 0 records</span>
+                            <div class="pagination-buttons-retro">
+                                <button class="retro-btn-sm" id="prevPageBtn" onclick="prevOrdersPage()" disabled>&lt;&lt; PREV</button>
+                                <button class="retro-btn-sm" id="nextPageBtn" onclick="nextOrdersPage()" disabled>NEXT &gt;&gt;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- 2005 Retro Footer -->
+        <footer class="win-window footer-window">
+            <div class="win-body footer-inner">
+                <div class="footer-copy">
+                    © 2005 ROBOSATS CYBERNETICS // POWERED BY NOSTR NIP-69 &amp; TOR HIDDEN SERVICES
+                </div>
+                <div class="footer-disclaimer">
+                    RECOMMENDED SCREEN RESOLUTION: 1024x768 16-BIT COLOR OR HIGHER. JAVA RUNTIME ENVIRONMENT ENABLED.
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Return to Modern Dashboard Corner -->
+    <a href="/index.html" class="corner-modern-badge">
+        <img src="/modern-badge.svg" width="40" height="40">
+    </a>
+
+    <!-- Client Logic -->
+    <script src="/index.js"></script>
+    <script src="/player.js"></script>
+    <script src="/retro-eastereggs.js"></script>
+</body>
+</html>

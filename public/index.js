@@ -15,6 +15,8 @@ let selectedTimeRange = 'ALL';
 const PALETTES = {
     dark: ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#f472b6', '#38bdf8'],
     light: ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#db2777', '#0284c7'],
+    'vaporwave-dark': ['#00f5ff', '#00ffb2', '#ffd93d', '#ff4d8d', '#a020f0', '#ff2e97', '#7fdcff'],
+    'vaporwave-light': ['#067083', '#0d9e78', '#e8a716', '#d63384', '#7b2ff7', '#e0198a', '#3f8ea8'],
 };
 
 const ICON_SUN = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
@@ -51,6 +53,39 @@ function initTheme() {
     updateThemeUI(isLight);
 }
 
+const SKINS = ['modern', 'vaporwave'];
+
+function applySkin(skin) {
+    const modernLink = document.getElementById('skinModern');
+    const vaporwaveLink = document.getElementById('skinVaporwave');
+    if (!modernLink || !vaporwaveLink) return;
+
+    modernLink.disabled = skin !== 'modern';
+    vaporwaveLink.disabled = skin !== 'vaporwave';
+    document.body.dataset.skin = skin;
+
+    const textEl = document.getElementById('skinText');
+    if (textEl) textEl.textContent = skin === 'modern' ? 'Retro' : 'Modern';
+
+    // Chart colors are set inline per-render, so they need a repaint on skin change too
+    if (currentData && currentData.length > 0) {
+        renderChart();
+    }
+}
+
+function toggleSkin() {
+    const current = document.body.dataset.skin || 'modern';
+    const next = current === 'modern' ? 'vaporwave' : 'modern';
+    localStorage.setItem('skin', next);
+    applySkin(next);
+}
+
+function initSkin() {
+    const saved = localStorage.getItem('skin');
+    const skin = SKINS.includes(saved) ? saved : 'modern';
+    applySkin(skin);
+}
+
 function getFilters() {
     const platEl = document.getElementById('platform');
     return {
@@ -62,6 +97,7 @@ function getFilters() {
         aggType: document.getElementById('aggType').value,
         timeRange: selectedTimeRange,
         isLight: document.body.classList.contains('light-mode'),
+        skin: document.body.dataset.skin || 'modern',
     };
 }
 
@@ -194,16 +230,18 @@ function updateFilterHint() {
     const hintEl = document.getElementById('filterHint');
     if (!hintEl) return;
 
+    const isVapor = hintEl.classList.contains('filter-hint-retro') || window.location.pathname.includes('vaporwave');
     const { currency, platform, orderType } = getFilters();
     const curLabel = currency === 'ALL' ? 'local fiat' : currency;
     const platLabel = platform === 'ALL' ? 'RoboSats & P2P platforms' : platform.toUpperCase();
+    const prefix = isVapor ? '<span class="hint-tag">[INFO]</span>' : ICON_INFO;
 
     if (orderType === 'buy') {
-        hintEl.innerHTML = `${ICON_INFO} <span><strong>Taker Buys BTC:</strong> Offers where you pay ${escapeHtml(curLabel)} to receive Bitcoin into your Lightning wallet via ${escapeHtml(platLabel)}.</span>`;
+        hintEl.innerHTML = `${prefix} <span><strong>Taker Buys BTC:</strong> Offers where you pay ${escapeHtml(curLabel)} to receive Bitcoin into your Lightning wallet via ${escapeHtml(platLabel)}.</span>`;
     } else if (orderType === 'sell') {
-        hintEl.innerHTML = `${ICON_INFO} <span><strong>Taker Sells BTC:</strong> Offers where you send Bitcoin to receive ${escapeHtml(curLabel)} via payment transfer on ${escapeHtml(platLabel)}.</span>`;
+        hintEl.innerHTML = `${prefix} <span><strong>Taker Sells BTC:</strong> Offers where you send Bitcoin to receive ${escapeHtml(curLabel)} via payment transfer on ${escapeHtml(platLabel)}.</span>`;
     } else {
-        hintEl.innerHTML = `${ICON_INFO} <span><strong>All Orders:</strong> Showing both Buy and Sell offers across ${escapeHtml(platLabel)} in ${escapeHtml(curLabel)}.</span>`;
+        hintEl.innerHTML = `${prefix} <span><strong>All Orders:</strong> Showing both Buy and Sell offers across ${escapeHtml(platLabel)} in ${escapeHtml(curLabel)}.</span>`;
     }
 }
 
@@ -324,8 +362,7 @@ function computeGlobal24hOrders(cutoff24h) {
 
 function updateKPIs(data) {
     const { currency, platform, orderType, groupBy } = getFilters();
-    // TODO: remove the difference
-    const now = Date.now() - (24 * 60 * 60 * 1000);
+    const now = Date.now();
     const cutoff24h = now - (24 * 60 * 60 * 1000);
 
     // Filter unique active 24h orders for active filter selection
@@ -474,10 +511,54 @@ function resetKPIs() {
     document.getElementById('statLastUpdate').textContent = 'Latest: --';
 }
 
+let highlightedDatasetIndex = null;
+
+function hexToRgba(hex, alpha) {
+    if (!hex || hex[0] !== '#') return hex;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function dimOtherDatasets(chartInstance, activeIndex) {
+    if (highlightedDatasetIndex === activeIndex) return;
+    highlightedDatasetIndex = activeIndex;
+
+    chartInstance.data.datasets.forEach((ds, i) => {
+        if (!ds._baseBorderColor) ds._baseBorderColor = ds.borderColor;
+        const isBaseline = ds.label && ds.label.includes('Spot Baseline');
+        if (i === activeIndex) {
+            ds.borderColor = ds._baseBorderColor;
+            ds.borderWidth = 3;
+            ds.order = -1;
+        } else {
+            ds.borderColor = isBaseline ? ds._baseBorderColor : hexToRgba(ds._baseBorderColor, 0.15);
+            ds.borderWidth = 2;
+            ds.order = 0;
+        }
+    });
+    chartInstance.update('none');
+}
+
+function resetDatasetOpacity(chartInstance) {
+    if (highlightedDatasetIndex === null) return;
+    highlightedDatasetIndex = null;
+
+    chartInstance.data.datasets.forEach(ds => {
+        if (ds._baseBorderColor) {
+            ds.borderColor = ds._baseBorderColor;
+        }
+        ds.borderWidth = ds.label && ds.label.includes('Spot Baseline') ? 1.5 : 2;
+        ds.order = ds.label && ds.label.includes('Spot Baseline') ? 999 : 0;
+    });
+    chartInstance.update('none');
+}
+
 function renderChart() {
     if (!currentData || currentData.length === 0) return;
 
-    const { currency, platform, orderType, groupBy, metric, aggType, timeRange, isLight } = getFilters();
+    const { currency, platform, orderType, groupBy, metric, aggType, timeRange, isLight, skin } = getFilters();
 
     // Filter rows by active time range (24h / 7d / 30d / All)
     let chartRows = currentData;
@@ -517,7 +598,9 @@ function renderChart() {
     });
 
     // Build Chart.js datasets with theme palette
-    const palette = isLight ? PALETTES.light : PALETTES.dark;
+    const isVaporwave = skin === 'vaporwave';
+    const paletteKey = isVaporwave ? (isLight ? 'vaporwave-light' : 'vaporwave-dark') : (isLight ? 'light' : 'dark');
+    const palette = PALETTES[paletteKey];
     const datasets = Object.keys(grouped).map((category, idx) => {
         const color = palette[idx % palette.length];
         return {
@@ -526,20 +609,25 @@ function renderChart() {
             borderColor: color,
             backgroundColor: color,
             borderWidth: 2,
-            tension: 0.25,
+            tension: 0.4,
+            cubicInterpolationMode: 'monotone',
             fill: false,
             spanGaps: true,
-            pointRadius: timestamps.length > 50 ? 1.5 : 3,
+            pointRadius: timestamps.length > 50 ? 0 : 2,
             pointHoverRadius: 5,
+            pointHoverBorderWidth: 2,
         };
     });
 
     // 0.00% Baseline Reference Line (Spot price) for premium metric
     if (metric === 'premium' && timestamps.length > 0) {
+        const baselineColor = isVaporwave
+            ? (isLight ? 'rgba(123, 47, 247, 0.45)' : 'rgba(184, 164, 232, 0.4)')
+            : (isLight ? 'rgba(100, 116, 139, 0.45)' : 'rgba(156, 163, 175, 0.35)');
         datasets.push({
             label: '0.00% Spot Baseline',
             data: timestamps.map(() => 0),
-            borderColor: isLight ? 'rgba(100, 116, 139, 0.45)' : 'rgba(156, 163, 175, 0.35)',
+            borderColor: baselineColor,
             borderWidth: 1.5,
             borderDash: [5, 5],
             pointRadius: 0,
@@ -562,13 +650,18 @@ function renderChart() {
     document.getElementById('chartTitle').textContent =
         `${platDisplay}${curDisplay} ${typeDisplay} - 12h Rolling ${metricTitle} (${aggTitle})${rangeDisplay}`;
 
-    const textColor = isLight ? '#475569' : '#9ca3af';
-    const gridColor = isLight ? '#f1f5f9' : '#1f293d';
+    const textColor = isVaporwave
+        ? (isLight ? '#8654b8' : '#b8a4e8')
+        : (isLight ? '#475569' : '#9ca3af');
+    const gridColor = isVaporwave
+        ? (isLight ? 'rgba(123, 47, 247, 0.12)' : 'rgba(255, 46, 151, 0.12)')
+        : (isLight ? '#f1f5f9' : '#1f293d');
 
     const ctx = document.getElementById('mainChart').getContext('2d');
     if (chart) {
         chart.destroy();
     }
+    highlightedDatasetIndex = null;
 
     chart = new Chart(ctx, {
         type: 'line',
@@ -581,10 +674,28 @@ function renderChart() {
                 mode: 'index',
                 intersect: false,
             },
+            onHover: (evt, activeElements, chartInstance) => {
+                const nearest = chartInstance.getElementsAtEventForMode(
+                    evt, 'nearest', { intersect: false, axis: 'xy' }, false
+                );
+                if (nearest.length > 0) {
+                    dimOtherDatasets(chartInstance, nearest[0].datasetIndex);
+                } else {
+                    resetDatasetOpacity(chartInstance);
+                }
+            },
             plugins: {
                 legend: {
                     position: 'top',
                     align: 'end',
+                    onHover: (evt, legendItem, legend) => {
+                        legend.chart.canvas.style.cursor = 'pointer';
+                        dimOtherDatasets(legend.chart, legendItem.datasetIndex);
+                    },
+                    onLeave: (evt, legendItem, legend) => {
+                        legend.chart.canvas.style.cursor = 'default';
+                        resetDatasetOpacity(legend.chart);
+                    },
                     labels: {
                         color: textColor,
                         boxWidth: 12,
@@ -594,10 +705,18 @@ function renderChart() {
                     },
                 },
                 tooltip: {
-                    backgroundColor: isLight ? '#ffffff' : '#111827',
-                    titleColor: isLight ? '#0f172a' : '#f3f4f6',
-                    bodyColor: isLight ? '#334155' : '#e5e7eb',
-                    borderColor: isLight ? '#cbd5e1' : '#374151',
+                    backgroundColor: isVaporwave
+                        ? (isLight ? '#fff0fb' : '#1a0b3d')
+                        : (isLight ? '#ffffff' : '#111827'),
+                    titleColor: isVaporwave
+                        ? (isLight ? '#3a0d5e' : '#f5f0ff')
+                        : (isLight ? '#0f172a' : '#f3f4f6'),
+                    bodyColor: isVaporwave
+                        ? (isLight ? '#8654b8' : '#b8a4e8')
+                        : (isLight ? '#334155' : '#e5e7eb'),
+                    borderColor: isVaporwave
+                        ? (isLight ? '#e0198a' : '#ff2e97')
+                        : (isLight ? '#cbd5e1' : '#374151'),
                     borderWidth: 1,
                     padding: 10,
                     callbacks: {
@@ -1013,6 +1132,7 @@ function initGuide() {
 
 window.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    initSkin();
     initGuide();
     initAutoRefresh();
     manualRefresh();

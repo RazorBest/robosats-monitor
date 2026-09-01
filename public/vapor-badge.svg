@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <defs>
+    <!-- Sunset Gradient for Floppy Label -->
+    <linearGradient id="vaporSunset" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="50%" stop-color="#9d00ff"/>
+      <stop offset="100%" stop-color="#00f0ff"/>
+    </linearGradient>
+    
+    <!-- Shutter Metallic Gradient -->
+    <linearGradient id="shutterMetal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a0a5b5"/>
+      <stop offset="45%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#808595"/>
+      <stop offset="100%" stop-color="#d0d5e5"/>
+    </linearGradient>
+
+    <!-- Outer Bevel Drop Shadow -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#ff007f" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Floppy Outer Casing -->
+  <g filter="url(#neonGlow)">
+    <!-- Main Shell with 3D Bevel Edge -->
+    <path d="M 4,4 L 32,4 L 36,8 L 36,36 L 4,36 Z" fill="#15052e" stroke="#00f0ff" stroke-width="1.5" stroke-linejoin="round"/>
+    
+    <!-- Metallic Shutter -->
+    <rect x="10" y="4" width="16" height="13" fill="url(#shutterMetal)" stroke="#0d0221" stroke-width="0.75" rx="1"/>
+    <!-- Shutter Window Notch -->
+    <rect x="13" y="6" width="4" height="9" fill="#15052e" rx="0.5"/>
+    
+    <!-- Vaporwave Hologram Sticker Label -->
+    <rect x="7" y="19" width="26" height="15" fill="url(#vaporSunset)" rx="1.5"/>
+    
+    <!-- Perspective Grid Lines on Sticker -->
+    <line x1="7" y1="28" x2="33" y2="28" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.6"/>
+    <line x1="7" y1="31" x2="33" y2="31" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.8"/>
+    <line x1="12" y1="25" x2="9" y2="34" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.7"/>
+    <line x1="20" y1="25" x2="20" y2="34" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.7"/>
+    <line x1="28" y1="25" x2="31" y2="34" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.7"/>
+    
+    <!-- Neon Sun on Sticker -->
+    <circle cx="20" cy="24" r="3.5" fill="#ffee00"/>
+    
+    <!-- Write Protect Notch -->
+    <rect x="6" y="32" width="2.5" height="2" fill="#00f0ff"/>
+  </g>
+</svg>
