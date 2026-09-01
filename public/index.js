@@ -900,6 +900,34 @@ function formatFiatDisplay(fiatAmount, currency) {
     return `${parts[0]}${curSuffix}`;
 }
 
+function formatPaymentMethodsHtml(paymentMethods) {
+    let methods = [];
+    if (Array.isArray(paymentMethods)) {
+        methods = paymentMethods.map(m => String(m).trim()).filter(Boolean);
+    } else if (typeof paymentMethods === 'string' && paymentMethods.trim()) {
+        methods = paymentMethods.split(',').map(m => m.trim()).filter(Boolean);
+    }
+    if (methods.length === 0) return '<span class="text-muted">--</span>';
+
+    const fullTitle = escapeHtml(methods.join(', '));
+    const MAX_VISIBLE = 2;
+
+    if (methods.length <= MAX_VISIBLE) {
+        return `<span class="payment-methods-cell" title="${fullTitle}">` +
+            methods.map(m => `<span class="method-tag">${escapeHtml(m)}</span>`).join('') +
+            `</span>`;
+    }
+
+    const visible = methods.slice(0, MAX_VISIBLE);
+    const remainingCount = methods.length - MAX_VISIBLE;
+    const remainingList = escapeHtml(methods.slice(MAX_VISIBLE).join(', '));
+
+    return `<span class="payment-methods-cell" title="${fullTitle}">` +
+        visible.map(m => `<span class="method-tag">${escapeHtml(m)}</span>`).join('') +
+        `<span class="method-tag-more" title="+${remainingCount} more: ${remainingList}">+${remainingCount}</span>` +
+        `</span>`;
+}
+
 function filterAndRenderOrders() {
     const search = (document.getElementById('ordersSearchInput')?.value || '').toLowerCase().trim();
     const currency = document.getElementById('orderListCurrency')?.value || 'ALL';
@@ -912,8 +940,8 @@ function filterAndRenderOrders() {
         if (status !== 'ALL' && order.status !== status) return false;
         if (search) {
             const matchId = (order.order_id || '').toLowerCase().includes(search);
-            const matchMethod = (order.payment_methods || '').toLowerCase().includes(search);
-            const matchPlatform = (order.platform || '').toLowerCase().includes(search);
+            const matchMethod = String(order.payment_methods || '').toLowerCase().includes(search);
+            const matchPlatform = String(order.platform || '').toLowerCase().includes(search);
             const matchCurrency = (order.currency || '').toLowerCase().includes(search);
             if (!matchId && !matchMethod && !matchPlatform && !matchCurrency) return false;
         }
@@ -1007,6 +1035,7 @@ function renderOrdersTable() {
 
         const fiatDisplay = formatFiatDisplay(order.fiat_amount, order.currency);
         const timeDisplay = formatDateTime(order.first_seen);
+        const methodsHtml = formatPaymentMethodsHtml(order.payment_methods);
 
         return `
             <tr>
@@ -1015,7 +1044,7 @@ function renderOrdersTable() {
                 <td class="font-mono text-bold">${escapeHtml(fiatDisplay)}</td>
                 <td class="font-mono">${premHtml}</td>
                 <td class="font-mono text-muted">${bondHtml}</td>
-                <td>${escapeHtml(order.payment_methods || '--')}</td>
+                <td>${methodsHtml}</td>
                 <td><span class="platform-tag">${escapeHtml(order.platform || '--')}</span></td>
                 <td><span class="${statusClass}">${statusLabel}</span></td>
                 <td class="text-muted font-mono text-sm">${timeDisplay}</td>

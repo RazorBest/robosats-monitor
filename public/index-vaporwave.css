@@ -1102,6 +1102,47 @@ body.light-mode .retro-note-card p strong {
     font-size: 0.68rem;
 }
 
+.payment-methods-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 220px;
+    vertical-align: middle;
+}
+
+.method-tag {
+    font-size: 0.68rem;
+    background: var(--surface-dark);
+    color: var(--text-main);
+    border: 1px solid var(--neon-purple);
+    padding: 1px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+    display: inline-block;
+    line-height: 1.2;
+}
+
+.method-tag-more {
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    background: var(--surface-light);
+    color: var(--neon-pink);
+    border: 1px solid var(--neon-pink);
+    padding: 1px 4px;
+    cursor: help;
+    white-space: nowrap;
+    line-height: 1.2;
+    transition: background 0.1s, color 0.1s;
+}
+
+.method-tag-more:hover {
+    background: var(--neon-pink);
+    color: #fff;
+}
+
 .order-id-cell {
     display: inline-flex;
     align-items: center;
