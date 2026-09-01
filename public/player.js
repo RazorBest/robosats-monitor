@@ -5,10 +5,12 @@
  */
 
 (function () {
+    const DATA_BASE_URL = 'https://royal-tooth-f2a6.razor-orange.workers.dev';
+
     const PLAYLIST = [
-        { file: '/audio/track1.mp3', title: '01. Street Lights Passing Me By - HolzinaCC0' },
-        { file: '/audio/track2.mp3', title: '02. A Night Of Dizzy Spells - Eric Skiff' },
-        { file: '/audio/track3.mp3', title: '03. Underclocked - Eric Skiff' }
+        { file: `${DATA_BASE_URL}/audio/track1.mp3`, title: '01. Street Lights Passing Me By - HolzinaCC0' },
+        { file: `${DATA_BASE_URL}/audio/track2.mp3`, title: '02. A Night Of Dizzy Spells - Eric Skiff' },
+        { file: `${DATA_BASE_URL}/audio/track3.mp3`, title: '03. Underclocked - Eric Skiff' }
     ];
 
     let currentTrackIndex = 0;

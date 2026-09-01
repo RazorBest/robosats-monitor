@@ -1,6 +1,5 @@
-// =============================================================================
-// RoboSats NIP-69 Orderbook Dashboard - Client Controller
-// =============================================================================
+// Base URL for analyzed data (points to reverse proxy worker / bucket)
+const DATA_BASE_URL = 'https://royal-tooth-f2a6.razor-orange.workers.dev';
 
 let chart = null;
 let rawGroupData = null;
@@ -299,7 +298,7 @@ async function fetchAndDraw(forceRefetch = false) {
         return;
     }
 
-    const fileUrl = `analyzed/rolling_premium_${groupBy}.json`;
+    const fileUrl = `${DATA_BASE_URL}/analyzed/rolling_premium_${groupBy}.json`;
     showOverlay('Loading dataset...');
 
     try {
@@ -765,7 +764,7 @@ let sortDirection = 'desc';
 
 async function fetchOrders() {
     try {
-        const res = await fetch('analyzed/orders.json');
+        const res = await fetch(`${DATA_BASE_URL}/analyzed/orders.json`);
         if (!res.ok) throw new Error('Orders not available');
         allOrders = await res.json();
         if (!Array.isArray(allOrders)) allOrders = [];

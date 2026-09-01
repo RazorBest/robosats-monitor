@@ -8,6 +8,8 @@
  */
 
 (function () {
+    const DATA_BASE_URL = 'https://royal-tooth-f2a6.razor-orange.workers.dev';
+
     // =========================================================================
     // 1. Static Visitor Counter
     // =========================================================================
@@ -29,7 +31,7 @@
 
     async function loadVisitorCount() {
         try {
-            const res = await fetch('/count.json');
+            const res = await fetch(`${DATA_BASE_URL}/count.json`);
             if (res.ok) {
                 const data = await res.json();
                 if (typeof data.count === 'number') {
