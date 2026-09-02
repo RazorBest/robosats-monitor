@@ -11,7 +11,7 @@ import dotenv
 import requests
 import websocket
 from botocore.config import Config
-from websocket import WebSocketException, WebSocketTimeoutException
+from websocket import WebSocketTimeoutException
 
 from analyze import analyze
 
@@ -45,8 +45,7 @@ WS_ONION_URL = "ws://ngdk7ocdzmz5kzsysa3om6du7ycj2evxp2f2olfkyq37htx3gllwp2yd.on
 CHECK_INTERVAL = 60  # seconds between checks
 LOG_DIR = "logs"
 EVENTS_FILE = "data/events.log"
-IDS_PENDING_FILE = "data/ids_pending.json"
-IDS_DONE_FILE = "data/ids_done.json"
+STATE_FILE = "data/orders_state.json"
 LOGS_PATH = "logs/monitor.log"
 
 REQUEST_PAYLOAD = [
@@ -102,15 +101,12 @@ def read_json_from_file_or_create(path: str, default_callback=dict):
 
 
 class Aggregator:
-    def __init__(self, events_path: str, ids_pending_path: str, ids_done_path: str):
+    def __init__(self, events_path: str, state_path: str):
         self.events_path = events_path
-        self.ids_pending_path = ids_pending_path
-        self.ids_done_path = ids_done_path
-        self.ids_done = {}
+        self.state_path = state_path
         self.events = {}
 
-        self.ids_pending = read_json_from_file_or_create(self.ids_pending_path)
-        self.ids_done = read_json_from_file_or_create(self.ids_done_path)
+        self.orders_state = read_json_from_file_or_create(self.state_path)
 
         try:
             with open(self.events_path) as file:
@@ -124,10 +120,8 @@ class Aggregator:
             pass
 
     def save_state(self):
-        with open(self.ids_pending_path, "w") as file:
-            json.dump(self.ids_pending, file, indent=2)
-        with open(self.ids_done_path, "w") as file:
-            json.dump(self.ids_done, file, indent=2)
+        with open(self.state_path, "w") as file:
+            json.dump(self.orders_state, file, indent=2)
 
     def push_data(self, data: dict):
         eid = data["id"]
@@ -136,49 +130,29 @@ class Aggregator:
 
         now = int(time.time())
 
-        if status == "pending" or status == "in-progress":
-            if order_id in self.ids_pending:
-                self.ids_pending[order_id]["last_seen"] = now
-                self.ids_pending[order_id]["status"] = status
-                if eid in self.events:
-                    self.events[eid]["last_seen"] = now
-                return
-            if order_id in self.ids_done:
-                raise ValueError("Invalid state transition state done to pending")
+        # Duplicate event check: if this exact event ID was already seen
+        if eid in self.events:
+            if order_id in self.orders_state:
+                self.orders_state[order_id]["last_seen"] = now
+                self.orders_state[order_id]["status"] = status
+            self.events[eid]["last_seen"] = now
+            return
 
-            first_seen = now
-            last_seen = now
-            self.ids_pending[order_id] = {
-                "first_seen": first_seen,
-                "last_seen": last_seen,
-                "status": status,
-            }
+        # New event: preserve original first_seen if order is known
+        if order_id in self.orders_state:
+            first_seen = self.orders_state[order_id].get("first_seen", now)
         else:
-            if order_id in self.ids_done:
-                self.ids_done[order_id]["last_seen"] = now
-                self.ids_done[order_id]["status"] = status
-                if eid in self.events:
-                    self.events[eid]["last_seen"] = now
-                return
+            first_seen = now
 
-            if order_id in self.ids_pending:
-                logger.error("Same id different values: %s", data)
-                prev = self.ids_pending.pop(order_id)
-                first_seen = prev.get("first_seen", now)
-                last_seen = now
-            else:
-                first_seen = now
-                last_seen = now
-
-            self.ids_done[order_id] = {
-                "first_seen": first_seen,
-                "last_seen": last_seen,
-                "status": status,
-            }
+        self.orders_state[order_id] = {
+            "first_seen": first_seen,
+            "last_seen": now,
+            "status": status,
+        }
 
         data = copy.deepcopy(data)
         data["first_seen"] = first_seen
-        data["last_seen"] = last_seen
+        data["last_seen"] = now
 
         with open(self.events_path, "a") as file:
             file.write(json.dumps(data) + "\n")
@@ -252,7 +226,7 @@ def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
 
     # 5 days ago
     last_book_request = int(time.time()) - 5 * 24 * 60 * 60
-    aggregator = Aggregator(EVENTS_FILE, IDS_PENDING_FILE, IDS_DONE_FILE)
+    aggregator = Aggregator(EVENTS_FILE, STATE_FILE)
 
     while not stop_event.is_set():
         events = request_orders(ws_url, last_book_request)
