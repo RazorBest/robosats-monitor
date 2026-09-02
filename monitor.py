@@ -236,16 +236,14 @@ def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
 
     logger.info(f"Starting monitor for {ws_url} via Tor...")
 
-    # 5 days ago
-    last_book_request = int(time.time()) - 5 * 24 * 60 * 60
     aggregator = Aggregator(EVENTS_FILE, STATE_FILE)
 
     while not stop_event.is_set():
+        # 5 days ago
+        last_book_request = int(time.time()) - 5 * 24 * 60 * 60
         events = request_orders(ws_url, last_book_request)
         if events is not None:
             update_orders(aggregator, events)
-            # We don't know the API, so we add a bound of 30 mins
-            last_book_request = int(time.time()) - 30 * 60
 
         stop_event.wait(CHECK_INTERVAL)
 
