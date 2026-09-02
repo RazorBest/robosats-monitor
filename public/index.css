@@ -683,8 +683,9 @@ body.light-mode select {
 }
 
 .filter-item select {
-    padding: 0.3rem 0.6rem;
+    padding: 0.3rem 1.8rem 0.3rem 0.6rem;
     font-size: 0.8rem;
+    background-position: right 0.6rem center;
 }
 
 .pending-toggle-btn {
