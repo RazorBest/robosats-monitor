@@ -835,6 +835,20 @@ body.light-mode select {
     border-color: rgba(59, 130, 246, 0.3);
 }
 
+.status-cell {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    vertical-align: middle;
+}
+
+.order-subtext {
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
 .badge-status {
     font-size: 0.7rem;
     padding: 0.15rem 0.45rem;
@@ -843,6 +857,7 @@ body.light-mode select {
     text-transform: uppercase;
     font-family: var(--font-mono);
     display: inline-block;
+    align-self: flex-start;
 }
 
 .badge-pending {

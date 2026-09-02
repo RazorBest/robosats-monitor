@@ -368,6 +368,17 @@ function formatFullDateTime(isoString) {
     });
 }
 
+function formatDuration(ms) {
+    if (ms == null || isNaN(ms) || ms < 0) return null;
+    const totalSecs = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+}
+
 function getOrderLastSeen(order) {
     if (!order || order.last_seen == null) {
         throw new Error(`Missing required 'last_seen' field on order ${order ? order.order_id : 'unknown'}`);
@@ -1047,6 +1058,36 @@ function renderOrdersTable() {
         const statusClass = `badge-status badge-${(order.status || 'pending').toLowerCase()}`;
         const statusLabel = order.status || 'pending';
 
+        let statusTitle = '';
+        let statusSubtextHtml = '';
+
+        if (order.status === 'success' && order.success_ts) {
+            const successDate = parseUtcDate(order.success_ts);
+            const fullSuccessStr = formatFullDateTime(order.success_ts);
+            statusTitle = `Completed: ${fullSuccessStr}`;
+
+            const baseCreatedStr = order.created_at || order.first_seen;
+            const createdDate = baseCreatedStr ? parseUtcDate(baseCreatedStr) : null;
+
+            if (createdDate && successDate && successDate >= createdDate) {
+                const durMs = successDate.getTime() - createdDate.getTime();
+                const durStr = formatDuration(durMs);
+                if (durStr) {
+                    statusTitle += ` (took ${durStr})`;
+                    statusSubtextHtml = `<span class="order-subtext text-muted">took ${durStr}</span>`;
+                }
+            } else if (successDate) {
+                const shortSuccess = formatDateTime(order.success_ts);
+                statusSubtextHtml = `<span class="order-subtext text-muted">${shortSuccess}</span>`;
+            }
+        }
+
+        const statusBadgeTitleAttr = statusTitle ? ` title="${escapeHtml(statusTitle)}"` : '';
+        const statusHtml = `<div class="status-cell">
+            <span class="${statusClass}"${statusBadgeTitleAttr}>${statusLabel}</span>
+            ${statusSubtextHtml}
+        </div>`;
+
         const premVal = order.premium;
         let premHtml = '--';
         if (premVal != null && !isNaN(premVal)) {
@@ -1059,8 +1100,33 @@ function renderOrdersTable() {
         const bondHtml = (bondVal != null && !isNaN(bondVal)) ? `${bondVal.toFixed(2)}%` : '--';
 
         const fiatDisplay = formatFiatDisplay(order.fiat_amount, order.currency);
-        const timeDisplay = formatDateTime(order.first_seen);
-        const fullTimeTitle = escapeHtml(formatFullDateTime(order.first_seen));
+        const baseTimeStr = order.first_seen || order.created_at;
+        const timeDisplay = formatDateTime(baseTimeStr);
+
+        // Build comprehensive lifecycle tooltip for Time cell
+        const timeLines = [];
+        if (order.created_at) {
+            timeLines.push(`Created:   ${formatFullDateTime(order.created_at)}`);
+        }
+        if (order.first_seen) {
+            timeLines.push(`First seen: ${formatFullDateTime(order.first_seen)}`);
+        }
+        if (order.last_seen) {
+            timeLines.push(`Last seen:  ${formatFullDateTime(order.last_seen)}`);
+        }
+        if (order.success_ts) {
+            timeLines.push(`Completed:  ${formatFullDateTime(order.success_ts)}`);
+            const baseForDur = order.created_at || order.first_seen;
+            const createdDate = baseForDur ? parseUtcDate(baseForDur) : null;
+            const successDate = parseUtcDate(order.success_ts);
+            if (createdDate && successDate && successDate >= createdDate) {
+                const durStr = formatDuration(successDate.getTime() - createdDate.getTime());
+                if (durStr) {
+                    timeLines.push(`Duration:   ${durStr}`);
+                }
+            }
+        }
+        const fullTimeTitle = escapeHtml(timeLines.join('\n'));
         const methodsHtml = formatPaymentMethodsHtml(order.payment_methods);
 
         return `
@@ -1072,7 +1138,7 @@ function renderOrdersTable() {
                 <td class="font-mono text-muted">${bondHtml}</td>
                 <td>${methodsHtml}</td>
                 <td><span class="platform-tag">${escapeHtml(order.platform || '--')}</span></td>
-                <td><span class="${statusClass}">${statusLabel}</span></td>
+                <td>${statusHtml}</td>
                 <td class="text-muted font-mono text-sm" title="${fullTimeTitle}">${timeDisplay}</td>
             </tr>
         `;
