@@ -1106,6 +1106,7 @@ body.light-mode .retro-note-card p strong {
 .badge-pending { background: #ffee00; color: #000; }
 .badge-success { background: #00ff66; color: #000; }
 .badge-expired { background: #555555; color: #fff; }
+.badge-missing { background: #555555; color: #fff; }
 .badge-canceled { background: #ff0044; color: #fff; }
 
 .premium-pos { color: var(--neon-green); font-weight: 700; }

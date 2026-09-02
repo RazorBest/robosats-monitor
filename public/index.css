@@ -867,7 +867,7 @@ body.light-mode select {
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.badge-expired, .badge-canceled {
+.badge-expired, .badge-canceled, .badge-missing {
     background: var(--surface-hover);
     color: var(--text-muted);
     border: 1px solid var(--border);
