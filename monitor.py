@@ -190,6 +190,7 @@ def request_orders(url: str, since: int | None = None):
         ws.settimeout(10)
 
         events = []
+        eose_received = False
 
         try:
             while ret := ws.recv_data():
@@ -200,15 +201,18 @@ def request_orders(url: str, since: int | None = None):
                     _mtype, _topic, data = msg
                     events.append(data)
                 elif msg[0] == "EOSE":
+                    eose_received = True
                     break
         except WebSocketTimeoutException:
-            pass
-
-        logger.debug(f"WS events: {len(events)}")
+            logger.warning("WS timeout before EOSE")
 
         ws.close()
         logger.debug("WS CLOSED")
 
+        if not eose_received:
+            return None
+
+        logger.debug(f"WS events: {len(events)}")
         return events[::-1]
     except Exception as e:
         logger.debug("WS DOWN")
