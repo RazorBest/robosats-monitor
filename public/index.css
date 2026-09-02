@@ -374,11 +374,6 @@ h1 {
     transition: border-color 0.15s, background 0.15s;
 }
 
-.stat-card:hover {
-    border-color: var(--border);
-    background: var(--surface);
-}
-
 .stat-card::before {
     content: "";
     position: absolute;
