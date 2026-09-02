@@ -119,7 +119,7 @@ def preprocess(df: pd.DataFrame, orders_state: dict):
     df = df.sort_values(by="last_seen")
     df = df.drop_duplicates(subset=["order_id"], keep="last").copy()
 
-    df["created_at"] = pd.to_datetime(df["order_id"].map(created_at_map))
+    df["created_at"] = pd.to_datetime(df["order_id"].map(created_at_map)).fillna(df["created_at"])
     df["success_ts"] = pd.to_datetime(df["order_id"].map(success_ts_map))
 
     df["last_seen"] = pd.to_datetime(df["order_id"].map(lambda oid: orders_state[oid]["last_seen"]), unit="s")
