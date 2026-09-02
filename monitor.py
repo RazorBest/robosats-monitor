@@ -158,6 +158,14 @@ class Aggregator:
             file.write(json.dumps(data) + "\n")
             self.events[eid] = data
 
+    def mark_missing(self, seen_order_ids: set):
+        for order_id, info in self.orders_state.items():
+            if info["status"] in ("success", "canceled"):
+                continue
+            if order_id in seen_order_ids:
+                continue
+            info["status"] = "missing"
+
 
 def request_orders(url: str, since: int | None = None):
     """
@@ -209,8 +217,12 @@ def request_orders(url: str, since: int | None = None):
 def update_orders(aggregator: Aggregator, events: list):
     if not events:
         return
+    seen_order_ids = set()
     for data in events:
+        order_id = next(l[1] for l in data["tags"] if l[0] == "d")
+        seen_order_ids.add(order_id)
         aggregator.push_data(data)
+    aggregator.mark_missing(seen_order_ids)
     aggregator.save_state()
 
 
@@ -243,7 +255,7 @@ def run_robosats_monitor(ws_url: str, stop_event: threading.Event):
 def run_analyzer(events_path: str, stop_event: threading.Event):
     while not stop_event.is_set():
         logger.info("Analyzer start")
-        analyze(events_path)
+        analyze(events_path, STATE_FILE)
         logger.info("Analyzer done")
         wait_seconds = 60 * 5
         stop_event.wait(timeout=wait_seconds)

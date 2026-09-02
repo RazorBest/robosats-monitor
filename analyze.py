@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 
 import boto3
 import dotenv
@@ -68,7 +69,7 @@ def parse_nostr_event(event):
     return row
 
 
-def preprocess(df: pd.DataFrame):
+def preprocess(df: pd.DataFrame, orders_state: dict):
     # Rename nostr keys to human readable according to NIP-69: https://nips.nostr.com/69
     df = df.rename(
         columns={
@@ -120,6 +121,22 @@ def preprocess(df: pd.DataFrame):
 
     df["created_at"] = pd.to_datetime(df["order_id"].map(created_at_map))
     df["success_ts"] = pd.to_datetime(df["order_id"].map(success_ts_map))
+
+    df["last_seen"] = pd.to_datetime(df["order_id"].map(lambda oid: orders_state[oid]["last_seen"]), unit="s")
+    df["status"] = df["order_id"].map(lambda oid: orders_state[oid]["status"])
+
+    # Expiration tag can have duration as a second element: ["expiration", "<timestamp>", "<duration_seconds>"].
+    # Extract the first element (the unix timestamp) if present as a list.
+    if "expiration" in df.columns:
+        df["expiration"] = df["expiration"].apply(lambda x: x[0] if isinstance(x, (list, tuple)) and len(x) > 0 else x)
+        df["expiration"] = pd.to_numeric(df["expiration"], errors="coerce")
+
+    # Status is tracked by monitor.py. Terminal statuses ('success', 'canceled') never expire.
+    # If an active or missing order passed its expiration time since the last monitor poll, mark it as expired.
+    now = int(time.time())
+    is_active = ~df["status"].isin(["success", "canceled"])
+    is_expired = is_active & df["expiration"].notna() & (now > df["expiration"])
+    df.loc[is_expired, "status"] = "expired"
 
     return df
 
@@ -195,7 +212,7 @@ def store_orders(df: pd.DataFrame):
     upload_df_to_s3(orders_json, "orders.json")
 
 
-def analyze(events_path: str):
+def analyze(events_path: str, state_path: str):
     rows = []
     try:
         with open(events_path) as file:
@@ -212,8 +229,11 @@ def analyze(events_path: str):
     if not rows:
         return
 
+    with open(state_path) as file:
+        orders_state = json.load(file)
+
     df = pd.DataFrame(rows)
-    df = preprocess(df)
+    df = preprocess(df, orders_state)
     # TODO: remove me
     print(f"Count: {len(df)}")
 
@@ -229,4 +249,4 @@ def analyze(events_path: str):
 
 
 if __name__ == "__main__":
-    analyze("data/events.log")
+    analyze("data/events.log", "data/orders_state.json")
