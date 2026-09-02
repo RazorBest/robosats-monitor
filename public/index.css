@@ -969,7 +969,7 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.75rem;
+    font-size: 1rem;
     color: var(--text-muted);
     padding: 0.5rem 0;
     border-top: 1px solid var(--border);
