@@ -133,6 +133,8 @@ class Aggregator:
         # Duplicate event check: if this exact event ID was already seen
         if eid in self.events:
             if order_id in self.orders_state:
+                if self.orders_state[order_id]["status"] in ("success", "canceled"):
+                    return
                 self.orders_state[order_id]["last_seen"] = now
                 self.orders_state[order_id]["status"] = status
             self.events[eid]["last_seen"] = now
@@ -140,7 +142,7 @@ class Aggregator:
 
         # New event: preserve original first_seen if order is known
         if order_id in self.orders_state:
-            first_seen = self.orders_state[order_id].get("first_seen", now)
+            first_seen = self.orders_state[order_id]["first_seen"]
         else:
             first_seen = now
 
