@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 import os
+import tempfile
 import threading
 import time
 from datetime import UTC, datetime
@@ -120,8 +121,11 @@ class Aggregator:
             pass
 
     def save_state(self):
-        with open(self.state_path, "w") as file:
-            json.dump(self.orders_state, file, indent=2)
+        state_dir = os.path.dirname(self.state_path)
+        with tempfile.NamedTemporaryFile("w", dir=state_dir, delete=False) as tmp_file:
+            json.dump(self.orders_state, tmp_file, indent=2)
+            tmp_path = tmp_file.name
+        os.replace(tmp_path, self.state_path)
 
     def push_data(self, data: dict):
         eid = data["id"]
