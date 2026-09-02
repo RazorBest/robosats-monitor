@@ -446,11 +446,13 @@ function updateKPIs(data) {
         volMainStr = (totalSats >= 100000000)
             ? `${(totalSats / 100000000).toFixed(3)} BTC`
             : `${totalSats.toLocaleString()} sats`;
+        const maxFiatDecimals = (currency === 'BTC' || currency === 'L-BTC') ? 4 : 0;
         volSubStr = (hasFiat && currency !== 'ALL')
-            ? `≈ ${totalFiat.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${currency}`
+            ? `≈ ${totalFiat.toLocaleString(undefined, { maximumFractionDigits: maxFiatDecimals })} ${currency}`
             : `${activeOrders24h.length} active offers`;
     } else if (hasFiat && currency !== 'ALL') {
-        volMainStr = `${totalFiat.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${currency}`;
+        const maxFiatDecimals = (currency === 'BTC' || currency === 'L-BTC') ? 4 : 0;
+        volMainStr = `${totalFiat.toLocaleString(undefined, { maximumFractionDigits: maxFiatDecimals })} ${currency}`;
         volSubStr = `${activeOrders24h.length} active offers`;
     }
 
@@ -900,6 +902,12 @@ function getFiatSortValue(fiatAmount) {
     return isNaN(num) ? -Infinity : num;
 }
 
+function formatFiatValue(val, currency) {
+    if (isNaN(val)) return '';
+    const maxDigits = (currency === 'BTC' || currency === 'L-BTC' || (val !== 0 && Math.abs(val) < 1)) ? 8 : 2;
+    return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: maxDigits });
+}
+
 function formatFiatDisplay(fiatAmount, currency) {
     if (fiatAmount == null || fiatAmount === '') return '--';
 
@@ -921,16 +929,16 @@ function formatFiatDisplay(fiatAmount, currency) {
         const max = Number(parts[1]);
         if (!isNaN(min) && !isNaN(max)) {
             if (min === max) {
-                return `${min.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${curSuffix}`;
+                return `${formatFiatValue(min, currency)}${curSuffix}`;
             }
-            return `${min.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} – ${max.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${curSuffix}`;
+            return `${formatFiatValue(min, currency)} – ${formatFiatValue(max, currency)}${curSuffix}`;
         }
         return `${parts[0]} – ${parts[1]}${curSuffix}`;
     }
 
     const val = Number(parts[0]);
     if (!isNaN(val)) {
-        return `${val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${curSuffix}`;
+        return `${formatFiatValue(val, currency)}${curSuffix}`;
     }
 
     return `${parts[0]}${curSuffix}`;
