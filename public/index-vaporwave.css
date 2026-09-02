@@ -1079,11 +1079,28 @@ body.light-mode .retro-note-card p strong {
     font-size: 0.7rem;
 }
 
+.status-cell {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    vertical-align: middle;
+}
+
+.order-subtext {
+    font-size: 0.65rem;
+    font-family: var(--font-terminal);
+    line-height: 1.1;
+    color: var(--neon-cyan);
+    white-space: nowrap;
+}
+
 .badge-status {
     padding: 1px 4px;
     font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
+    display: inline-block;
+    align-self: flex-start;
 }
 
 .badge-pending { background: #ffee00; color: #000; }
