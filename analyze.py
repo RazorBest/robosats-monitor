@@ -102,7 +102,7 @@ def preprocess(df: pd.DataFrame):
     # Convert numeric fields to numbers
     df["premium"] = pd.to_numeric(df["premium"], errors="coerce")
     df["bond"] = pd.to_numeric(df["bond"], errors="coerce")
-    df["created_at"] = pd.to_datetime(df["created_at"], unit="s")
+    df["created_at"] = pd.to_datetime(df["created_at"], unit="s", errors="coerce")
     if "done_at" in df.columns:
         df["done_at"] = pd.to_datetime(df["done_at"], unit="s", errors="coerce")
     if "first_seen" in df.columns:
@@ -110,11 +110,16 @@ def preprocess(df: pd.DataFrame):
     if "last_seen" in df.columns:
         df["last_seen"] = pd.to_datetime(df["last_seen"], unit="s", errors="coerce")
 
-    if "order_id" in df.columns:
-        df["order_id"] = df["order_id"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else (str(x) if isinstance(x, list) else x))
+    df["order_id"] = df["order_id"].apply(lambda x: x[0] if isinstance(x, list) and len(x) > 0 else (str(x) if isinstance(x, list) else x))
+
+    created_at_map = df.loc[df["status"] == "pending"].groupby("order_id")["created_at"].min().to_dict()
+    success_ts_map = df.loc[df["status"] == "success"].groupby("order_id")["created_at"].max().to_dict()
 
     df = df.sort_values(by="last_seen")
     df = df.drop_duplicates(subset=["order_id"], keep="last").copy()
+
+    df["created_at"] = pd.to_datetime(df["order_id"].map(created_at_map))
+    df["success_ts"] = pd.to_datetime(df["order_id"].map(success_ts_map))
 
     return df
 
@@ -128,9 +133,7 @@ def metric_average_premium(df: pd.DataFrame, group_by: str):
     # Ensure all groupby columns contain hashable scalars before grouping
     for col in groupby_cols:
         if col in df_exploded.columns:
-            df_exploded[col] = df_exploded[col].apply(
-                lambda x: ", ".join(str(i) for i in x) if isinstance(x, list) else x
-            )
+            df_exploded[col] = df_exploded[col].apply(lambda x: ", ".join(str(i) for i in x) if isinstance(x, list) else x)
 
     df_clean = df_exploded.dropna(subset=["first_seen", "premium"] + groupby_cols)
     df_indexed = df_clean.set_index("first_seen").sort_index()
