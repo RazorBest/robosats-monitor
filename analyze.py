@@ -6,6 +6,7 @@ import time
 import boto3
 import dotenv
 import pandas as pd
+import requests
 from botocore.config import Config
 
 dotenv.load_dotenv()
@@ -203,6 +204,78 @@ def format_fiat_amount(fa):
     return "--"
 
 
+_spot_cache: dict[tuple[str, str | None], float | None] = {}
+
+
+def fetch_btc_spot_rate(currency: str, date_str: str | None = None) -> float | None:
+    cache_key = (currency, date_str)
+    if cache_key in _spot_cache:
+        return _spot_cache[cache_key]
+
+    if currency in ("BTC", "L-BTC"):
+        return 1.0
+
+    url = f"https://api.coinbase.com/v2/prices/BTC-{currency}/spot"
+
+    try:
+        response = requests.get(url, params={"date": date_str}, timeout=10)
+        if response.status_code == 200:
+            rate = float(response.json()["data"]["amount"])
+            _spot_cache[cache_key] = rate
+            return rate
+    except (requests.RequestException, KeyError, ValueError) as e:
+        logger.debug("Failed to fetch spot rate for %s (%s): %s", currency, date_str, e)
+
+    _spot_cache[cache_key] = None
+    return None
+
+
+def calculate_order_sats(fiat_amount: float | list, premium: float, rate: float) -> int | None:
+    if rate <= 0:
+        return None
+
+    if isinstance(fiat_amount, list):
+        # Choose minimum
+        fiat = fiat_amount[0]
+    else:
+        fiat = float(fiat_amount)
+
+    try:
+        prem = float(premium)
+    except ValueError:
+        prem = 0.0
+
+    factor = 1.0 + (prem / 100.0)
+
+    sats = (fiat / (rate * factor)) * 1e8
+    return round(sats)
+
+
+def enrich_orders_with_sats(df: pd.DataFrame) -> pd.DataFrame:
+    sats_list: list[int | None] = []
+
+    for _, row in df.iterrows():
+        raw_amt = pd.to_numeric(row.get("amount"), errors="coerce")
+        if pd.notna(raw_amt) and raw_amt > 0:
+            sats_list.append(int(raw_amt))
+            continue
+
+        date_str = None
+        if pd.notna(row.get("created_at")):
+            date_str = row["created_at"].strftime("%Y-%m-%d")
+        elif pd.notna(row.get("first_seen")):
+            date_str = row["first_seen"].strftime("%Y-%m-%d")
+
+        spot_rate = fetch_btc_spot_rate(row["currency"], date_str)
+        sats = None
+        if spot_rate is not None:
+            sats = calculate_order_sats(row["fiat_amount"], row["premium"], spot_rate)
+        sats_list.append(sats)
+
+    df["amount_sats"] = pd.Series(sats_list, index=df.index, dtype="Int64")
+    return df
+
+
 def store_orders(df: pd.DataFrame):
     orders_json = df.to_json(date_format="iso", orient="records", indent=2)
 
@@ -236,6 +309,8 @@ def analyze(events_path: str, state_path: str):
     df = preprocess(df, orders_state)
     # TODO: remove me
     print(f"Count: {len(df)}")
+
+    df = enrich_orders_with_sats(df)
 
     # Generate full orders list and summary metadata
     store_orders(df)
