@@ -395,6 +395,15 @@ function computeGlobal24hOrders(cutoff24h) {
     return allOrders.filter(o => getOrderLastSeen(o) >= cutoff24h).length;
 }
 
+function formatBitcoinSum(sats, unit) {
+    const ticker = unit || 'BTC';
+    const btc = sats / 100000000;
+    if (btc >= 0.01) {
+        return `${btc.toFixed(3)} ${ticker}`;
+    }
+    return `${Math.round(sats).toLocaleString()} sats`;
+}
+
 function updateKPIs(data) {
     const { currency, platform, orderType, groupBy } = getFilters();
     const now = Date.now();
@@ -445,16 +454,17 @@ function updateKPIs(data) {
     let volMainStr = '--';
     let volSubStr = successOrders24h.length > 0 ? volCountStr : '24h active window';
     if (totalSats > 0) {
-        volMainStr = (totalSats >= 100000000)
-            ? `${(totalSats / 100000000).toFixed(3)} BTC`
-            : `${totalSats.toLocaleString()} sats`;
+        volMainStr = formatBitcoinSum(totalSats);
         const maxFiatDecimals = (currency === 'BTC' || currency === 'L-BTC') ? 4 : 0;
         volSubStr = (hasFiat && currency !== 'ALL')
             ? `≈ ${totalFiat.toLocaleString(undefined, { maximumFractionDigits: maxFiatDecimals })} ${currency}`
             : volCountStr;
     } else if (hasFiat && currency !== 'ALL') {
-        const maxFiatDecimals = (currency === 'BTC' || currency === 'L-BTC') ? 4 : 0;
-        volMainStr = `${totalFiat.toLocaleString(undefined, { maximumFractionDigits: maxFiatDecimals })} ${currency}`;
+        if (currency === 'BTC' || currency === 'L-BTC') {
+            volMainStr = formatBitcoinSum(totalFiat * 100000000, currency);
+        } else {
+            volMainStr = `${totalFiat.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${currency}`;
+        }
         volSubStr = volCountStr;
     }
 
