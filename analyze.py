@@ -234,18 +234,20 @@ def calculate_order_sats(fiat_amount: float | list, premium: float, rate: float)
     if rate <= 0:
         return None
 
-    if isinstance(fiat_amount, list):
-        # Choose minimum
-        fiat = fiat_amount[0]
-    else:
-        fiat = float(fiat_amount)
+    try:
+        # Choose minimum if range
+        fiat = float(fiat_amount[0] if isinstance(fiat_amount, list) else fiat_amount)
+    except (ValueError, TypeError, IndexError):
+        return None
 
     try:
         prem = float(premium)
-    except ValueError:
+    except (ValueError, TypeError):
         prem = 0.0
 
     factor = 1.0 + (prem / 100.0)
+    if factor <= 0:
+        return None
 
     sats = (fiat / (rate * factor)) * 1e8
     return round(sats)
