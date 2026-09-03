@@ -431,20 +431,18 @@ function updateKPIs(data) {
     let totalFiat = 0;
     let hasFiat = false;
 
+    const isAllCurrencies = (currency === 'ALL' || groupBy === 'currency');
+
     successOrders24h.forEach(o => {
-        if (o.amount != null && !isNaN(o.amount) && Number(o.amount) > 0) {
-            totalSats += Number(o.amount);
-        }
-        if (o.fiat_amount != null) {
-            let fVal = 0;
-            if (Array.isArray(o.fiat_amount) && o.fiat_amount.length > 0) {
-                const nums = o.fiat_amount.map(Number).filter(n => !isNaN(n));
-                if (nums.length > 0) fVal = nums.reduce((a, b) => a + b, 0) / nums.length;
-            } else if (typeof o.fiat_amount === 'number' || (!isNaN(Number(o.fiat_amount)) && String(o.fiat_amount).trim() !== '')) {
-                fVal = Number(o.fiat_amount);
-            }
-            if (fVal > 0) {
-                totalFiat += fVal;
+        if (isAllCurrencies) {
+            if (o.amount_sats > 0) totalSats += o.amount_sats;
+        } else {
+            if (o.amount > 0) totalSats += Number(o.amount);
+            if (Array.isArray(o.fiat_amount)) {
+                totalFiat += (Number(o.fiat_amount[0]) + Number(o.fiat_amount[1])) / 2;
+                hasFiat = true;
+            } else if (o.fiat_amount) {
+                totalFiat += Number(o.fiat_amount);
                 hasFiat = true;
             }
         }
