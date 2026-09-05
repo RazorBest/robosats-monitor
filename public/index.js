@@ -704,11 +704,17 @@ function renderChart() {
         ? (isLight ? 'rgba(123, 47, 247, 0.12)' : 'rgba(255, 46, 151, 0.12)')
         : (isLight ? '#f1f5f9' : '#1f293d');
 
-    const ctx = document.getElementById('mainChart').getContext('2d');
+    const canvas = document.getElementById('mainChart');
+    const ctx = canvas.getContext('2d');
     if (chart) {
         chart.destroy();
     }
     highlightedDatasetIndex = null;
+    canvas.onmouseleave = () => {
+        if (chart) {
+            resetDatasetOpacity(chart);
+        }
+    };
 
     chart = new Chart(ctx, {
         type: 'line',
@@ -722,6 +728,10 @@ function renderChart() {
                 intersect: false,
             },
             onHover: (evt, activeElements, chartInstance) => {
+                if (evt.type === 'mouseout') {
+                    resetDatasetOpacity(chartInstance);
+                    return;
+                }
                 const nearest = chartInstance.getElementsAtEventForMode(
                     evt, 'nearest', { intersect: false, axis: 'xy' }, false
                 );
