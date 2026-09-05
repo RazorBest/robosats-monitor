@@ -558,50 +558,6 @@ function resetKPIs() {
     document.getElementById('statLastUpdate').textContent = 'Latest: --';
 }
 
-let highlightedDatasetIndex = null;
-
-function hexToRgba(hex, alpha) {
-    if (!hex || hex[0] !== '#') return hex;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function dimOtherDatasets(chartInstance, activeIndex) {
-    if (highlightedDatasetIndex === activeIndex) return;
-    highlightedDatasetIndex = activeIndex;
-
-    chartInstance.data.datasets.forEach((ds, i) => {
-        if (!ds._baseBorderColor) ds._baseBorderColor = ds.borderColor;
-        const isBaseline = ds.label && ds.label.includes('Spot Baseline');
-        if (i === activeIndex) {
-            ds.borderColor = ds._baseBorderColor;
-            ds.borderWidth = 3;
-            ds.order = -1;
-        } else {
-            ds.borderColor = isBaseline ? ds._baseBorderColor : hexToRgba(ds._baseBorderColor, 0.15);
-            ds.borderWidth = 2;
-            ds.order = 0;
-        }
-    });
-    chartInstance.update('none');
-}
-
-function resetDatasetOpacity(chartInstance) {
-    if (highlightedDatasetIndex === null) return;
-    highlightedDatasetIndex = null;
-
-    chartInstance.data.datasets.forEach(ds => {
-        if (ds._baseBorderColor) {
-            ds.borderColor = ds._baseBorderColor;
-        }
-        ds.borderWidth = ds.label && ds.label.includes('Spot Baseline') ? 1.5 : 2;
-        ds.order = ds.label && ds.label.includes('Spot Baseline') ? 999 : 0;
-    });
-    chartInstance.update('none');
-}
-
 function renderChart() {
     if (!currentData || currentData.length === 0) return;
 
@@ -704,17 +660,10 @@ function renderChart() {
         ? (isLight ? 'rgba(123, 47, 247, 0.12)' : 'rgba(255, 46, 151, 0.12)')
         : (isLight ? '#f1f5f9' : '#1f293d');
 
-    const canvas = document.getElementById('mainChart');
-    const ctx = canvas.getContext('2d');
+    const ctx = document.getElementById('mainChart').getContext('2d');
     if (chart) {
         chart.destroy();
     }
-    highlightedDatasetIndex = null;
-    canvas.onmouseleave = () => {
-        if (chart) {
-            resetDatasetOpacity(chart);
-        }
-    };
 
     chart = new Chart(ctx, {
         type: 'line',
@@ -727,32 +676,10 @@ function renderChart() {
                 mode: 'index',
                 intersect: false,
             },
-            onHover: (evt, activeElements, chartInstance) => {
-                if (evt.type === 'mouseout') {
-                    resetDatasetOpacity(chartInstance);
-                    return;
-                }
-                const nearest = chartInstance.getElementsAtEventForMode(
-                    evt, 'nearest', { intersect: false, axis: 'xy' }, false
-                );
-                if (nearest.length > 0) {
-                    dimOtherDatasets(chartInstance, nearest[0].datasetIndex);
-                } else {
-                    resetDatasetOpacity(chartInstance);
-                }
-            },
             plugins: {
                 legend: {
                     position: 'top',
                     align: 'end',
-                    onHover: (evt, legendItem, legend) => {
-                        legend.chart.canvas.style.cursor = 'pointer';
-                        dimOtherDatasets(legend.chart, legendItem.datasetIndex);
-                    },
-                    onLeave: (evt, legendItem, legend) => {
-                        legend.chart.canvas.style.cursor = 'default';
-                        resetDatasetOpacity(legend.chart);
-                    },
                     labels: {
                         color: textColor,
                         boxWidth: 12,
