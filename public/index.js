@@ -1202,6 +1202,16 @@ function updateSyncStatus() {
     if (el) el.textContent = `Synced: ${timeStr}`;
 }
 
+async function fetchLastAlive() {
+    try {
+        const res = await fetch(`${DATA_BASE_URL}/analyzed/last_alive.json`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const isStale = (Date.now() - new Date(data.last_alive)) >= 3600000;
+        document.querySelector('.status-dot')?.classList.toggle('red', isStale);
+    } catch {}
+}
+
 async function manualRefresh() {
     const btn = document.getElementById('refreshBtn');
     const icon = document.getElementById('refreshIcon');
@@ -1211,7 +1221,8 @@ async function manualRefresh() {
     try {
         await Promise.all([
             fetchAndDraw(true),
-            fetchOrders()
+            fetchOrders(),
+            fetchLastAlive()
         ]);
         updateSyncStatus();
     } finally {
