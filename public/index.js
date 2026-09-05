@@ -1218,7 +1218,7 @@ async function fetchLastAlive() {
         if (!res.ok) return;
         const data = await res.json();
         const isStale = (Date.now() - new Date(data.last_alive)) >= 3600000;
-        document.querySelector('.status-dot')?.classList.toggle('red', isStale);
+        document.querySelectorAll('.status-dot, .status-pulse').forEach(el => el.classList.toggle('red', isStale));
     } catch {}
 }
 

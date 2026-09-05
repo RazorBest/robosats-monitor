@@ -18,6 +18,7 @@
     --neon-purple: #9d00ff;
     --neon-yellow: #ffee00;
     --neon-green: #00ff66;
+    --neon-red: #ff0044;
     
     /* Windows 2000 / 2005 UI Chrome */
     --win-body: #1e0d45;
@@ -50,6 +51,7 @@ body.light-mode {
     --neon-purple: #6a0dad;
     --neon-yellow: #b58900;
     --neon-green: #008f39;
+    --neon-red: #d90026;
     
     --win-body: #fce8f8;
     --win-title-start: #d9006c;
@@ -304,6 +306,11 @@ body {
     border-radius: 50%;
     box-shadow: 0 0 8px var(--neon-green);
     animation: blink 1s infinite;
+}
+
+.status-pulse.red {
+    background: var(--neon-red);
+    box-shadow: 0 0 8px var(--neon-red);
 }
 
 @keyframes blink {
