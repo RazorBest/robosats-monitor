@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from datetime import UTC, datetime
 
 import boto3
 import dotenv
@@ -32,14 +33,27 @@ def get_s3_client():
 
 
 BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+ANALYZED_DIR = "public/analyzed"
 
 
-def upload_df_to_s3(data: str, target_filename: str):
+def upload_df_to_s3(data: str, target_filename: str, cache_control: str | None = None):
     s3 = get_s3_client()
-    if s3 and BUCKET_NAME:
-        s3.put_object(
-            Bucket=BUCKET_NAME, Key=f"analyzed/{target_filename}", Body=data, ContentType="application/json", CacheControl="max-age=300"
-        )
+    if not (s3 and BUCKET_NAME):
+        return
+
+    if cache_control is None:
+        cache_control = "max-age=300"
+
+    s3.put_object(
+        Bucket=BUCKET_NAME, Key=f"analyzed/{target_filename}", Body=data, ContentType="application/json", CacheControl=cache_control
+    )
+
+
+def write_df_locally(data: str, target_filename: str):
+    os.makedirs(ANALYZED_DIR, exist_ok=True)
+    filepath = os.path.join(ANALYZED_DIR, target_filename)
+    with open(filepath, "w") as f:
+        f.write(data)
 
 
 def parse_nostr_event(event):
@@ -164,15 +178,10 @@ def metric_average_premium(df: pd.DataFrame, group_by: str):
 
 
 def store_metric(df, metric, group):
-    os.makedirs("public/analyzed", exist_ok=True)
-
     filename = f"{metric}_{group}.json"
-    filepath = os.path.join("public/analyzed", filename)
-
     # orient="records" creates a clean list of dictionaries for JS
     json_data = df.to_json(orient="records", date_format="iso")
-    with open(filepath, "w") as f:
-        f.write(json_data)
+    write_df_locally(json_data, filename)
     upload_df_to_s3(json_data, filename)
 
 
@@ -280,11 +289,15 @@ def enrich_orders_with_sats(df: pd.DataFrame) -> pd.DataFrame:
 
 def store_orders(df: pd.DataFrame):
     orders_json = df.to_json(date_format="iso", orient="records", indent=2)
-
-    os.makedirs("public/analyzed", exist_ok=True)
-    with open("public/analyzed/orders.json", "w") as f:
-        f.write(orders_json)
+    write_df_locally(orders_json, "orders.json")
     upload_df_to_s3(orders_json, "orders.json")
+
+
+def store_last_alive():
+    now_iso = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    alive_json = json.dumps({"last_alive": now_iso}, indent=2) + "\n"
+    write_df_locally(alive_json, "last_alive.json")
+    upload_df_to_s3(alive_json, "last_alive.json", cache_control="max-age=60")
 
 
 def analyze(events_path: str, state_path: str):
@@ -323,6 +336,8 @@ def analyze(events_path: str, state_path: str):
     for group_by in group_by_variants:
         df_res = metric_average_premium(df, group_by=group_by)
         store_metric(df_res, "rolling_premium", group_by)
+
+    store_last_alive()
 
 
 if __name__ == "__main__":
